@@ -24,6 +24,7 @@
 #include <linux/msm_tsens.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/vmalloc.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/trace_thermal.h>
@@ -610,6 +611,120 @@ struct tsens_tm_device {
 
 struct tsens_tm_device *tmdev;
 
+static ssize_t
+zonemask_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	unsigned int zone_mtc , th1 , th2;
+	int ret;
+
+	ret = sscanf(buf, "%d %d %d", &zone_mtc , &th1 , &th2);
+
+	if (ret != TSENS_ZONEMASK_PARAMS)
+		pr_err("Invalid command line arguments\n");
+	else {
+		pr_debug("store zone_mtc=%d th1=%d th2=%d\n",
+				zone_mtc , th1 , th2);
+		tsens_set_mtc_zone_sw_mask(zone_mtc , th1 , th2);
+	}
+
+	return 0;
+}
+
+static ssize_t
+zonemask_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int zone_mtc , th1 , th2;
+	int ret;
+
+	ret = sscanf(buf, "%d %d %d", &zone_mtc , &th1 , &th2);
+
+	if (ret != TSENS_ZONEMASK_PARAMS)
+		pr_err("Invalid command line arguments\n");
+	else {
+		pr_debug("store zone_mtc=%d th1=%d th2=%d\n",
+				zone_mtc , th1 , th2);
+		tsens_set_mtc_zone_sw_mask(zone_mtc , th1 , th2);
+	}
+
+	return count;
+}
+
+static ssize_t
+zonelog_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	unsigned int zone_log;
+	int *p , ret;
+
+	p = vmalloc(sizeof(int));
+
+	if (!p)
+		pr_err("vmalloc failed\n");
+	else {
+		ret = sscanf(buf, "%d", &zone_log);
+		if (ret != TSENS_ZONELOG_PARAMS)
+			pr_err("Invalid command line arguments\n");
+		else {
+			pr_debug("show zone_log=%d\n", zone_log);
+			tsens_get_mtc_zone_log(zone_log , p);
+		}
+	}
+
+	return 0;
+}
+
+static ssize_t
+zonelog_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int zone_log;
+	int *p , ret;
+
+	p = vmalloc(sizeof(int));
+
+	if (!p)
+		pr_err("vmalloc failed\n");
+	else {
+		ret = sscanf(buf, "%d", &zone_log);
+		if (ret != TSENS_ZONELOG_PARAMS)
+			pr_err("Invalid command line arguments\n");
+		else {
+			pr_debug("show zone_log=%d\n", zone_log);
+			tsens_get_mtc_zone_log(zone_log , p);
+		}
+	}
+
+	return count;
+}
+
+static struct device_attribute tsens_mtc_dev_attr[] = {
+	__ATTR(zonemask, 0644, zonemask_show, zonemask_store),
+	__ATTR(zonelog, 0644, zonelog_show, zonelog_store),
+};
+
+static int create_tsens_mtc_sysfs(struct platform_device *pdev)
+{
+	int result = 0, i;
+	struct device_attribute *attr_ptr = NULL;
+
+	attr_ptr = tsens_mtc_dev_attr;
+
+	for (i = 0; i < ARRAY_SIZE(tsens_mtc_dev_attr); i++) {
+		result = device_create_file(&pdev->dev, &attr_ptr[i]);
+		if (result < 0)
+			goto error;
+	}
+
+	pr_debug("create_tsens_mtc_sysfs success\n");
+
+	return result;
+
+error:
+	for (i = 0; i < ARRAY_SIZE(tsens_mtc_dev_attr); i++)
+		device_remove_file(&pdev->dev, &attr_ptr[i]);
+
+	return result;
+}
 
 int tsens_is_ready()
 {
@@ -824,6 +939,80 @@ int tsens_get_max_sensor_num(uint32_t *tsens_num_sensors)
 	return 0;
 }
 EXPORT_SYMBOL(tsens_get_max_sensor_num);
+
+int tsens_set_mtc_zone_sw_mask(unsigned int zone , unsigned int th1_enable,
+				unsigned int th2_enable)
+{
+	unsigned int reg_cntl;
+
+	if (zone > TSENS_NUM_MTC_ZONES_SUPPORT)
+			return -EINVAL;
+
+	if (th1_enable && th2_enable)
+		writel_relaxed(TSENS_MTC_IN_EFFECT,
+				(TSENS_MTC_ZONE0_SW_MASK_ADDR
+				(tmdev->tsens_addr) +
+				(zone * TSENS_SN_ADDR_OFFSET)));
+	if (!th1_enable && !th2_enable)
+		writel_relaxed(TSENS_MTC_DISABLE,
+				(TSENS_MTC_ZONE0_SW_MASK_ADDR
+				(tmdev->tsens_addr) +
+				(zone * TSENS_SN_ADDR_OFFSET)));
+	if (th1_enable && !th2_enable)
+		writel_relaxed(TSENS_TH1_MTC_IN_EFFECT,
+				(TSENS_MTC_ZONE0_SW_MASK_ADDR
+				(tmdev->tsens_addr) +
+				(zone * TSENS_SN_ADDR_OFFSET)));
+	if (!th1_enable && th2_enable)
+		writel_relaxed(TSENS_TH2_MTC_IN_EFFECT,
+				(TSENS_MTC_ZONE0_SW_MASK_ADDR
+				(tmdev->tsens_addr) +
+				(zone * TSENS_SN_ADDR_OFFSET)));
+	reg_cntl = readl_relaxed((TSENS_MTC_ZONE0_SW_MASK_ADDR
+				(tmdev->tsens_addr) +
+				(zone *	TSENS_SN_ADDR_OFFSET)));
+	pr_debug("tsens : zone =%d th1=%d th2=%d reg=%x\n",
+		zone , th1_enable , th2_enable , reg_cntl);
+
+	return 0;
+}
+EXPORT_SYMBOL(tsens_set_mtc_zone_sw_mask);
+
+int tsens_get_mtc_zone_log(unsigned int zone , void *zone_log)
+{
+	unsigned int i , reg_cntl , is_valid , log[TSENS_MTC_ZONE_LOG_SIZE];
+	int *zlog = (int *)zone_log;
+
+	if (zone > TSENS_NUM_MTC_ZONES_SUPPORT)
+		return -EINVAL;
+	reg_cntl = readl_relaxed((TSENS_MTC_ZONE0_LOG
+				(tmdev->tsens_addr) +
+				(zone *	TSENS_SN_ADDR_OFFSET)));
+	is_valid = (reg_cntl & TSENS_LOGS_VALID_MASK)
+				>> TSENS_LOGS_VALID_SHIFT;
+	if (is_valid) {
+		log[0] = (reg_cntl & TSENS_LOGS_LATEST_MASK);
+		log[1] = (reg_cntl & TSENS_LOGS_LOG1_MASK)
+				  >> TSENS_LOGS_LOG1_SHIFT;
+		log[2] = (reg_cntl & TSENS_LOGS_LOG2_MASK)
+				  >> TSENS_LOGS_LOG2_SHIFT;
+		log[3] = (reg_cntl & TSENS_LOGS_LOG3_MASK)
+				  >> TSENS_LOGS_LOG3_SHIFT;
+		log[4] = (reg_cntl & TSENS_LOGS_LOG4_MASK)
+				  >> TSENS_LOGS_LOG4_SHIFT;
+		log[5] = (reg_cntl & TSENS_LOGS_LOG5_MASK)
+				  >> TSENS_LOGS_LOG5_SHIFT;
+		for (i = 0; i < (TSENS_MTC_ZONE_LOG_SIZE); i++) {
+			*(zlog+i) = log[i];
+			pr_debug("Log[%d]=%d\n", i , log[i]);
+		}
+	} else {
+		pr_debug("tsens: Valid bit disabled\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(tsens_get_mtc_zone_log);
 
 static int tsens_tz_get_mode(struct thermal_zone_device *thermal,
 			      enum thermal_device_mode *mode)
@@ -3443,15 +3632,12 @@ static struct of_device_id tsens_match[] = {
 	{	.compatible = "qcom,msm8992-tsens",
 		.data = (void *)TSENS_CALIB_FUSE_MAP_8992,
 	},
-<<<<<<< HEAD
-=======
 	{       .compatible = "qcom,msmtellurium-tsens",
 		.data = (void *)TSENS_CALIB_FUSE_MAP_MSMTELLURIUM,
 	},
 	{	.compatible = "qcom,msm-tsens-generic-type-a",
 		.data = (void *)TSENS_CALIB_FUSE_MAP_GENERIC_A,
 	},
->>>>>>> 85f6cf122438 (thermal: tsens: add support for generic sensor calibration)
 	{}
 };
 
@@ -3694,6 +3880,8 @@ static int get_device_tree_data(struct platform_device *pdev)
 		(!strcmp(id->compatible, "qcom,msm8994-tsens")) ||
 		(!strcmp(id->compatible, "qcom,msm8992-tsens")))
 		tmdev->tsens_type = TSENS_TYPE2;
+	else if (!strcmp(id->compatible, "qcom,msmtellurium-tsens"))
+		tmdev->tsens_type = TSENS_TYPE3;
 	else
 		tmdev->tsens_type = TSENS_TYPE0;
 
@@ -3821,6 +4009,10 @@ static int tsens_tm_probe(struct platform_device *pdev)
 	tmdev->is_ready = true;
 
 	platform_set_drvdata(pdev, tmdev);
+
+	rc = create_tsens_mtc_sysfs(pdev);
+	if (rc < 0)
+		pr_debug("Cannot create create_tsens_mtc_sysfs %d\n", rc);
 
 	return 0;
 fail:
