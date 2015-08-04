@@ -255,10 +255,10 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
 	__u.__val;					\
 })
 
-#define WRITE_ONCE(x, val)				\
+#define WRITE_ONCE(x, val) \
 ({							\
 	union { typeof(x) __val; char __c[1]; } __u =	\
-		{ .__val = (val) }; 			\
+		{ .__val = (__force typeof(x)) (val) }; \
 	__write_once_size(&(x), __u.__c, sizeof(x));	\
 	__u.__val;					\
 })
