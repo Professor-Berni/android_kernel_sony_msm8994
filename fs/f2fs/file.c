@@ -566,6 +566,13 @@ static inline __u32 f2fs_mask_flags(umode_t mode, __u32 flags)
 	else
 		return flags & F2FS_OTHER_FLMASK;
 }
+static int f2fs_ioc_read_verity_metadata(struct file *filp, unsigned long arg)
+{
+       if (!f2fs_sb_has_verity(F2FS_I_SB(file_inode(filp))))
+               return -EOPNOTSUPP;
+
+       return fsverity_ioctl_read_metadata(filp, (const void __user *)arg);
+}
 
 long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -578,6 +585,8 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case FS_IOC_GETFLAGS:
 		flags = fi->i_flags & FS_FL_USER_VISIBLE;
 		return put_user(flags, (int __user *) arg);
+       case FS_IOC_READ_VERITY_METADATA:
+               return f2fs_ioc_read_verity_metadata(filp, arg);
 	case FS_IOC_SETFLAGS:
 	{
 		unsigned int oldflags;
@@ -636,6 +645,7 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case F2FS_IOC32_SETFLAGS:
 		cmd = F2FS_IOC_SETFLAGS;
+	case FS_IOC_READ_VERITY_METADATA:
 		break;
 	default:
 		return -ENOIOCTLCMD;
