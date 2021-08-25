@@ -6,7 +6,7 @@
  */
 
 #include "fsverity_private.h"
-
+#include <linux/dcache.h>
 #include <linux/slab.h>
 
 static struct kmem_cache *fsverity_info_cachep;
