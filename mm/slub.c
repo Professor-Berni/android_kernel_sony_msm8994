@@ -4391,7 +4391,6 @@ static void resiliency_test(void)
 	p = kzalloc(256, GFP_KERNEL);
 	kfree(p);
 	p[50] = 0x9a;
-<<<<<<< HEAD
 	printk(KERN_ERR "\n2. kmalloc-256: Clobber 50th byte 0x9a->0x%p\n\n",
 			p);
 	validate_slab_cache(kmalloc_caches[type][8]);
