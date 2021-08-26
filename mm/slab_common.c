@@ -412,7 +412,8 @@ const struct kmalloc_info_struct kmalloc_info[] __initconst = {
 
 static void new_kmalloc_cache(int idx, unsigned long flags)
 {
-       kmalloc_caches[idx] = create_kmalloc_cache(kmalloc_info[idx].name,
+	int type = KMALLOC_NORMAL;
+       kmalloc_caches[type][idx] = create_kmalloc_cache(kmalloc_info[idx].name,
                                        kmalloc_info[idx].size, flags);
 }
 
@@ -494,7 +495,7 @@ void __init create_kmalloc_caches(unsigned long flags)
 	slab_state = UP;
 
 	for (i = 0; i <= KMALLOC_SHIFT_HIGH; i++) {
-		struct kmem_cache *s = kmalloc_caches[i];
+		struct kmem_cache *s = kmalloc_caches[KMALLOC_NORMAL][i];
 		char *n;
 
 		if (s) {
@@ -517,7 +518,7 @@ void __init create_kmalloc_caches(unsigned long flags)
 			BUG_ON(!n);
 
 			kmalloc_caches[KMALLOC_DMA][i] = create_kmalloc_cache(
-				n, size, SLAB_CACHE_DMA | flags, 0, 0);
+				n, size, SLAB_CACHE_DMA | flags);
 		}
 	}
 #endif
