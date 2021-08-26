@@ -633,13 +633,13 @@ resizefs_out:
 
 		return 0;
 	}
-
+#ifdef CONFIG_FS_VERITY
 	case FS_IOC_READ_VERITY_METADATA:
 		if (!ext4_has_feature_verity(sb))
 			return -EOPNOTSUPP;
 		return fsverity_ioctl_read_metadata(filp,
 						    (const void __user *)arg);
-
+#endif
 	default:
 		return -ENOTTY;
 	}
@@ -703,7 +703,9 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EXT4_IOC_MOVE_EXT:
 	case FITRIM:
 	case EXT4_IOC_RESIZE_FS:
+#ifdef CONFIG_FS_VERITY
 	case FS_IOC_READ_VERITY_METADATA:
+#endif
 		break;
 	default:
 		return -ENOIOCTLCMD;

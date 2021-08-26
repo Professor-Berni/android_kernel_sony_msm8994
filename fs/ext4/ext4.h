@@ -34,9 +34,9 @@
 #ifdef __KERNEL__
 #include <linux/compat.h>
 #endif
-
+#ifdef CONFIG_FS_VERITY
 #include <linux/fsverity.h>
-
+#endif
 /*
  * The fourth extended filesystem constants/structures
  */
