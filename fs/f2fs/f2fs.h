@@ -18,6 +18,7 @@
 #include <linux/crc32.h>
 #include <linux/magic.h>
 
+#include <linux/fsverity.h>
 /*
  * For mount options
  */

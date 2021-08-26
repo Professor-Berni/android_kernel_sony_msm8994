@@ -35,6 +35,8 @@
 #include <linux/compat.h>
 #endif
 
+#include <linux/fsverity.h>
+
 /*
  * The fourth extended filesystem constants/structures
  */
