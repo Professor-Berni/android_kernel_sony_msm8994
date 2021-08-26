@@ -6,7 +6,7 @@
  */
 
 #include "fsverity_private.h"
-
+#include <linux/fs.h>
 #include <crypto/hash.h>
 #include <linux/backing-dev.h>
 #include <linux/mount.h>

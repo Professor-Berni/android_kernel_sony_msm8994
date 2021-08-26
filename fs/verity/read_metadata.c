@@ -10,6 +10,7 @@
 #include <linux/backing-dev.h>
 #include <linux/highmem.h>
 #include <linux/signal.h>
+#include <linux/slab.h>
 #include <linux/uaccess.h>
 
 static int fsverity_read_merkle_tree(struct inode *inode,
