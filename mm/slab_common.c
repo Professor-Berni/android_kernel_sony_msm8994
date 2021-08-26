@@ -388,6 +388,12 @@ struct kmem_cache *kmalloc_slab(size_t size, gfp_t flags)
 	return kmalloc_caches[kmalloc_type(flags)][index];
 }
 
+static void new_kmalloc_cache(int idx, unsigned long flags)
+{
+       kmalloc_caches[idx] = create_kmalloc_cache(kmalloc_info[idx].name,
+                                       kmalloc_info[idx].size, flags);
+}
+
 /*
  * Create the kmalloc array. Some of the regular kmalloc arrays
  * may already have been created because they were needed to
