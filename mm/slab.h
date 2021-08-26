@@ -31,6 +31,11 @@ extern struct list_head slab_caches;
 
 /* The slab cache that manages slab cache information */
 extern struct kmem_cache *kmem_cache;
+/* A table of kmalloc cache names and sizes */
+extern const struct kmalloc_info_struct {
+	const char *name;
+	unsigned int size;
+} kmalloc_info[];
 
 unsigned long calculate_alignment(unsigned long flags,
 		unsigned long align, unsigned long size);
