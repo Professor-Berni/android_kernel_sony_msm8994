@@ -274,12 +274,12 @@ static inline unsigned long __sdfat_init_name_hash(const struct dentry *unused)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 21)
        /* EMPTY */
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 21) */
-static inline void inode_lock(struct inode *inode)
+static inline void __inode_lock(struct inode *inode)
 {
 	       mutex_lock(&inode->i_mutex);
 }
 
-static inline void inode_unlock(struct inode *inode)
+static inline void __inode_unlock(struct inode *inode)
 {
 	       mutex_unlock(&inode->i_mutex);
 }
@@ -1464,7 +1464,7 @@ static void defrag_cleanup_reqs(INOUT struct super_block *sb, IN int error)
  * @return	0 on success, -errno otherwise
  * @param	inode	inode
  * @param	chunk	given chunk
- * @remark	protected by inode_lock and super_lock
+ * @remark	protected by __inode_lock and super_lock
  */
 static int
 defrag_validate_pages(
@@ -1625,9 +1625,9 @@ defrag_validate_reqs(
 			i, inode, chunk->i_pos, chunk->f_clus, chunk->d_clus,
 			chunk->nr_clus, chunk->prev_clus, chunk->next_clus);
 		/**
-		 * Lock ordering: inode_lock -> lock_super
+		 * Lock ordering: __inode_lock -> lock_super
 		 */
-		inode_lock(inode);
+		__inode_lock(inode);
 		__lock_super(sb);
 
 		/* Check if enough buffers exist for chunk->new_idx */
@@ -1693,7 +1693,7 @@ unlock:
 		}
 		iput(inode);
 		__unlock_super(sb);
-		inode_unlock(inode);
+		__inode_unlock(inode);
 	}
 
 	/* Return error if all chunks are invalid */
@@ -1957,11 +1957,11 @@ sdfat_ioctl_defrag_trav(
 	}
 
 	/* Scan given directory and gather info */
-	inode_lock(inode);
+	__inode_lock(inode);
 	__lock_super(sb);
 	err = fsapi_dfr_scan_dir(sb, (void *)args);
 	__unlock_super(sb);
-	inode_unlock(inode);
+	__inode_unlock(inode);
 	ERR_HANDLE(err);
 
 	/* Copy the result to user */
