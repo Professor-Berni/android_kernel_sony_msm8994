@@ -269,6 +269,17 @@ extern struct page * find_get_page(struct address_space *mapping,
 pgoff_t page_cache_next_hole(struct address_space *mapping,
                              pgoff_t index, unsigned long max_scan);
 
+#define FGP_ACCESSED		0x00000001
+
+struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
+		int fgp_flags, gfp_t cache_gfp_mask);
+
+static inline struct page *find_get_page_flags(struct address_space *mapping,
+					pgoff_t offset, int fgp_flags)
+{
+	return pagecache_get_page(mapping, offset, fgp_flags, 0);
+}
+
 extern struct page * find_lock_page(struct address_space *mapping,
 				pgoff_t index);
 extern struct page * find_or_create_page(struct address_space *mapping,
