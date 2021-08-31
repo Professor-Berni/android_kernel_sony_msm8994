@@ -155,6 +155,7 @@ typedef u32 dma_addr_t;
 #else
 #endif
 typedef unsigned __bitwise__ gfp_t;
+typedef unsigned int __bitwise slab_flags_t;
 typedef unsigned __bitwise__ fmode_t;
 typedef unsigned __bitwise__ oom_flags_t;
 
