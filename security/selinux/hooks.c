@@ -189,7 +189,7 @@ static inline u32 cred_sid(const struct cred *cred)
 /*
  * get the objective security ID of a task
  */
-static inline u32 task_sid(const struct task_struct *task)
+static inline u32 task_sid_obj(const struct task_struct *task)
 {
 	u32 sid;
 
@@ -1491,7 +1491,7 @@ static int current_has_perm(const struct task_struct *tsk,
 	u32 sid, tsid;
 
 	sid = current_sid();
-	tsid = task_sid(tsk);
+	tsid = task_sid_obj(tsk);
 	return avc_has_perm(sid, tsid, SECCLASS_PROCESS, perms, NULL);
 }
 
@@ -1540,7 +1540,7 @@ static int cred_has_capability(const struct cred *cred,
 static int task_has_system(struct task_struct *tsk,
 			   u32 perms)
 {
-	u32 sid = task_sid(tsk);
+	u32 sid = task_sid_obj(tsk);
 
 	return avc_has_perm(sid, SECINITSID_KERNEL,
 			    SECCLASS_SYSTEM, perms, NULL);
@@ -1685,7 +1685,7 @@ static int may_create(struct inode *dir,
 static int may_create_key(u32 ksid,
 			  struct task_struct *ctx)
 {
-	u32 sid = task_sid(ctx);
+	u32 sid = task_sid_obj(ctx);
 
 	return avc_has_perm(sid, ksid, SECCLASS_KEY, KEY__CREATE, NULL);
 }
@@ -1875,7 +1875,7 @@ static inline u32 open_file_to_av(struct file *file)
 static int selinux_binder_set_context_mgr(struct task_struct *mgr)
 {
 	u32 mysid = current_sid();
-	u32 mgrsid = task_sid(mgr);
+	u32 mgrsid = task_sid_obj(mgr);
 
 	return avc_has_perm(mysid, mgrsid, SECCLASS_BINDER, BINDER__SET_CONTEXT_MGR, NULL);
 }
@@ -1883,8 +1883,8 @@ static int selinux_binder_set_context_mgr(struct task_struct *mgr)
 static int selinux_binder_transaction(struct task_struct *from, struct task_struct *to)
 {
 	u32 mysid = current_sid();
-	u32 fromsid = task_sid(from);
-	u32 tosid = task_sid(to);
+	u32 fromsid = task_sid_obj(from);
+	u32 tosid = task_sid_obj(to);
 	int rc;
 
 	if (mysid != fromsid) {
@@ -1898,14 +1898,14 @@ static int selinux_binder_transaction(struct task_struct *from, struct task_stru
 
 static int selinux_binder_transfer_binder(struct task_struct *from, struct task_struct *to)
 {
-	u32 fromsid = task_sid(from);
-	u32 tosid = task_sid(to);
+	u32 fromsid = task_sid_obj(from);
+	u32 tosid = task_sid_obj(to);
 	return avc_has_perm(fromsid, tosid, SECCLASS_BINDER, BINDER__TRANSFER, NULL);
 }
 
 static int selinux_binder_transfer_file(struct task_struct *from, struct task_struct *to, struct file *file)
 {
-	u32 sid = task_sid(to);
+	u32 sid = task_sid_obj(to);
 	struct file_security_struct *fsec = file->f_security;
 	struct inode *inode = file->f_path.dentry->d_inode;
 	struct inode_security_struct *isec = inode->i_security;
@@ -1944,7 +1944,7 @@ static int selinux_ptrace_access_check(struct task_struct *child,
 
 	if (mode & PTRACE_MODE_READ) {
 		u32 sid = current_sid();
-		u32 csid = task_sid(child);
+		u32 csid = task_sid_obj(child);
 		return avc_has_perm(sid, csid, SECCLASS_FILE, FILE__READ, NULL);
 	}
 
@@ -3363,7 +3363,7 @@ static int selinux_file_send_sigiotask(struct task_struct *tsk,
 				       struct fown_struct *fown, int signum)
 {
 	struct file *file;
-	u32 sid = task_sid(tsk);
+	u32 sid = task_sid_obj(tsk);
 	u32 perm;
 	struct file_security_struct *fsec;
 
@@ -3532,7 +3532,7 @@ static int selinux_kernel_module_request(char *kmod_name)
 	u32 sid;
 	struct common_audit_data ad;
 
-	sid = task_sid(current);
+	sid = task_sid_obj(current);
 
 	ad.type = LSM_AUDIT_DATA_KMOD;
 	ad.u.kmod_name = kmod_name;
@@ -3558,7 +3558,7 @@ static int selinux_task_getsid(struct task_struct *p)
 
 static void selinux_task_getsecid(struct task_struct *p, u32 *secid)
 {
-	*secid = task_sid(p);
+	*secid = task_sid_obj(p);
 }
 
 static int selinux_task_setnice(struct task_struct *p, int nice)
@@ -3635,7 +3635,7 @@ static int selinux_task_kill(struct task_struct *p, struct siginfo *info,
 	else
 		perm = signal_to_av(sig);
 	if (secid)
-		rc = avc_has_perm(secid, task_sid(p),
+		rc = avc_has_perm(secid, task_sid_obj(p),
 				  SECCLASS_PROCESS, perm, NULL);
 	else
 		rc = current_has_perm(p, perm);
@@ -3651,7 +3651,7 @@ static void selinux_task_to_inode(struct task_struct *p,
 				  struct inode *inode)
 {
 	struct inode_security_struct *isec = inode->i_security;
-	u32 sid = task_sid(p);
+	u32 sid = task_sid_obj(p);
 
 	isec->sid = sid;
 	isec->initialized = 1;
@@ -3932,7 +3932,7 @@ static int sock_has_perm(struct task_struct *task, struct sock *sk, u32 perms)
 	struct sk_security_struct *sksec = sk->sk_security;
 	struct common_audit_data ad;
 	struct lsm_network_audit net = {0,};
-	u32 tsid = task_sid(task);
+	u32 tsid = task_sid_obj(task);
 
 	if (unlikely(!sksec)) {
 		pr_warn("SELinux: sksec is NULL, socket is already freed\n");
@@ -5061,7 +5061,7 @@ static int ipc_alloc_security(struct task_struct *task,
 	if (!isec)
 		return -ENOMEM;
 
-	sid = task_sid(task);
+	sid = task_sid_obj(task);
 	isec->sclass = sclass;
 	isec->sid = sid;
 	perm->security = isec;
@@ -5247,7 +5247,7 @@ static int selinux_msg_queue_msgrcv(struct msg_queue *msq, struct msg_msg *msg,
 	struct ipc_security_struct *isec;
 	struct msg_security_struct *msec;
 	struct common_audit_data ad;
-	u32 sid = task_sid(target);
+	u32 sid = task_sid_obj(target);
 	int rc;
 
 	isec = msq->q_perm.security;
@@ -5646,7 +5646,7 @@ static int selinux_setprocattr(struct task_struct *p,
 		rcu_read_lock();
 		tracer = ptrace_parent(p);
 		if (tracer)
-			ptsid = task_sid(tracer);
+			ptsid = task_sid_obj(tracer);
 		rcu_read_unlock();
 
 		if (tracer) {
