@@ -607,7 +607,7 @@ int security_inode_getattr(struct vfsmount *mnt, struct dentry *dentry)
 {
 	if (unlikely(IS_PRIVATE(dentry->d_inode)))
 		return 0;
-	ret = call_int_hook(inode_getattr, 0, mnt, dentry);
+	return call_int_hook(inode_getattr, 0, mnt, dentry);
 }
 
 int security_inode_setxattr(struct dentry *dentry, const char *name,
