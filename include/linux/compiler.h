@@ -200,7 +200,6 @@ typedef __u64 __attribute__((__may_alias__)) __u64_alias_t;
 static __always_inline void __read_once_size(const volatile void *p, void *res, int size)
 {
 	switch (size) {
-	case 8: *(__u64 *)res = *(volatile __u64 *)p; break;
 	case 1: *(__u8_alias_t  *) res = *(volatile __u8_alias_t  *) p; break;
 	case 2: *(__u16_alias_t *) res = *(volatile __u16_alias_t *) p; break;
 	case 4: *(__u32_alias_t *) res = *(volatile __u32_alias_t *) p; break;
@@ -217,7 +216,6 @@ static __always_inline void __read_once_size(const volatile void *p, void *res, 
 static __always_inline void __write_once_size(volatile void *p, void *res, int size)
 {
 	switch (size) {
-	case 8: *(volatile __u64 *)p = *(__u64 *)res; break;
 	case 1: *(volatile  __u8_alias_t *) p = *(__u8_alias_t  *) res; break;
 	case 2: *(volatile __u16_alias_t *) p = *(__u16_alias_t *) res; break;
 	case 4: *(volatile __u32_alias_t *) p = *(__u32_alias_t *) res; break;
