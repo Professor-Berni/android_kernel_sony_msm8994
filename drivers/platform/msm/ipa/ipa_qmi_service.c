@@ -101,6 +101,10 @@ static struct msg_desc ipa_config_resp_desc = {
 	.ei_array = ipa_config_resp_msg_data_v01_ei,
 };
 
+/* Fwd decl: no IPACM here, so fake-send FILTER_INSTALLED_NOTIF_REQ ourselves
+ * (real impl below), else Sony A7 modem blocks on INSTALL_FILTER_RULE_REQ. */
+static void ipa_trigger_filter_notify(int count);
+
 static int handle_indication_req(void *req_h, void *req)
 {
 	struct ipa_indication_reg_req_msg_v01 *indication_req;
@@ -180,6 +184,11 @@ static int handle_install_filter_rule_req(void *req_h, void *req)
 			&ipa_install_fltr_rule_resp_desc, &resp, sizeof(resp));
 
 	IPAWANDBG("Replied to install filter request\n");
+
+	/* Schedule the worker that installs rules in IPA HW and sends
+	 * FILTER_INSTALLED_NOTIF_REQ; without it the modem panics ~1s after
+	 * sending INSTALL_FILTER_RULE. */
+	ipa_trigger_filter_notify(resp.filter_handle_list_len);
 	return rc;
 }
 
@@ -680,6 +689,25 @@ int qmi_filter_notify_send(struct ipa_fltr_installed_notif_req_msg_v01 *req)
 		resp.resp.error, "ipa_fltr_installed_notif_resp");
 }
 
+/* No IPACM: actually install the cached UL filter rules in HW and send
+ * FILTER_INSTALLED_NOTIF_REQ (a faked notify is rejected), else Sony A7 modem panics ~1s after INSTALL_FILTER_RULE_REQ.
+ */
+extern int wwan_add_ul_flt_rule_to_ipa(void);
+
+static int ipa_pending_filter_count;
+static void ipa_send_filter_installed_notify_work(struct work_struct *w)
+{
+	wwan_add_ul_flt_rule_to_ipa();
+}
+static DECLARE_DELAYED_WORK(ipa_filter_notify_work,
+		ipa_send_filter_installed_notify_work);
+
+static void ipa_trigger_filter_notify(int count)
+{
+	ipa_pending_filter_count = count;
+	schedule_delayed_work(&ipa_filter_notify_work, msecs_to_jiffies(50));
+}
+
 static void ipa_q6_clnt_recv_msg(struct work_struct *work)
 {
 	int rc;
@@ -768,6 +796,9 @@ static void ipa_q6_clnt_svc_arrive(struct work_struct *work)
 
 	ipa_q6_clnt_reset = 0;
 	IPAWANDBG("Q6 QMI service available now\n");
+	/* Force uc_loaded=1 here so init sends is_ssr_bootup=1; else Sony A7 modem
+	 * panics expecting a cold-boot INIT sequence we can't provide (no INIT_COMPLETED). */
+	atomic_set(&ipa_ctx->uc_ctx.uc_loaded, 1);
 	/* Initialize modem IPA-driver */
 	IPAWANDBG("send qmi_init_modem_send_sync_msg to modem\n");
 	rc = qmi_init_modem_send_sync_msg();

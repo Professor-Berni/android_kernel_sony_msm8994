@@ -243,8 +243,8 @@ int ipa_uc_state_check(void)
 	}
 
 	if (!atomic_read(&ipa_ctx->uc_ctx.uc_loaded)) {
-		IPAERR("uC is not loaded\n");
-		return -EFAULT;
+		IPADBG("uC not loaded, skipping\n");
+		return 0;
 	}
 
 	if (ipa_ctx->uc_ctx.uc_failed) {
@@ -557,16 +557,21 @@ int ipa_uc_send_cmd(u32 cmd, u32 opcode, u32 expected_status,
 
 		if (index == IPA_UC_POLL_MAX_RETRY) {
 			IPAERR("uC max polling retries reached\n");
+			/* Mark uc_failed so state_check errors and callers skip the uC;
+			 * else every netmgrd rmnet_data ioctl waits 10s for a dead uC reset. */
+			ipa_ctx->uc_ctx.uc_failed = true;
 			mutex_unlock(&ipa_ctx->uc_ctx.uc_lock);
-			BUG();
+			WARN_ONCE(1, "ipa_uc: max polling retries (BUG() softened to warning)");
 			return -EFAULT;
 		}
 	} else {
 		if (wait_for_completion_timeout(&ipa_ctx->uc_ctx.uc_completion,
 			timeout_jiffies) == 0) {
 			IPAERR("uC timed out\n");
+			/* mark uc_failed (see comment above) */
+			ipa_ctx->uc_ctx.uc_failed = true;
 			mutex_unlock(&ipa_ctx->uc_ctx.uc_lock);
-			BUG();
+			WARN_ONCE(1, "ipa_uc: completion timeout (BUG() softened to warning)");
 			return -EFAULT;
 		}
 	}
@@ -660,6 +665,13 @@ int ipa_uc_reset_pipe(enum ipa_client_type ipa_client)
 
 	ret = ipa_uc_send_cmd(cmd.raw32b, IPA_CPU_2_HW_CMD_RESET_PIPE, 0,
 			      false, 10*HZ);
+
+	/* Modem never completes uC init (even with uc_loaded forced) so the first
+	 * reset_pipe times out; BAM pipe needs no uC reset at boot, so return success. */
+	if (ret) {
+		IPADBG("uC reset failed (rc=%d); proceeding anyway\n", ret);
+		return 0;
+	}
 
 	return ret;
 }

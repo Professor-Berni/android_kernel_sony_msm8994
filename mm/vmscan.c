@@ -48,6 +48,7 @@
 #include <linux/oom.h>
 #include <linux/prefetch.h>
 #include <linux/debugfs.h>
+#include <linux/kallsyms.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -223,10 +224,72 @@ static const struct file_operations debug_shrinker_fops = {
 };
 
 /*
+ * Reject shrinkers whose callbacks aren't in kernel/module text: a
+ * corrupt count_objects ptr oopsed kswapd0 in shrink_slab.
+ */
+static inline bool shrinker_ptr_valid(void *fn)
+{
+	return fn == NULL || kernel_text_address((unsigned long)fn);
+}
+
+/*
+ * Register-time: require the ptr at a symbol START; garbage inside
+ * kernel text passes the range check but panics kswapd0 (PC=0x4).
+ */
+static bool shrinker_ptr_valid_strict(void *fn)
+{
+#ifdef CONFIG_KALLSYMS
+	unsigned long size, offset;
+
+	if (!fn)
+		return true;
+	if (!kernel_text_address((unsigned long)fn))
+		return false;
+	if (!kallsyms_lookup_size_offset((unsigned long)fn, &size, &offset))
+		return false;
+	return offset == 0;
+#else
+	return shrinker_ptr_valid(fn);
+#endif
+}
+
+/*
  * Add a shrinker callback to be called from the vm
  */
 void register_shrinker(struct shrinker *shrinker)
 {
+	/*
+	 * Init list_head before any early-return: a rejected shrinker's
+	 * NULL list would later crash unregister_shrinker in list_del.
+	 */
+	INIT_LIST_HEAD(&shrinker->list);
+
+	/*
+	 * API contract: EITHER ->shrink() OR count/scan, never both; a
+	 * legacy ->shrink caller leaves count/scan as uninitialized garbage.
+	 */
+	if (shrinker->shrink) {
+		shrinker->count_objects = NULL;
+		shrinker->scan_objects = NULL;
+	}
+
+	if (!shrinker_ptr_valid_strict(shrinker->shrink) ||
+	    !shrinker_ptr_valid_strict(shrinker->count_objects) ||
+	    !shrinker_ptr_valid_strict(shrinker->scan_objects)) {
+		pr_err("register_shrinker: REJECTED shrinker %p with bad callbacks "
+		       "(shrink=%p count=%p scan=%p), registered by %pS\n",
+		       shrinker, shrinker->shrink, shrinker->count_objects,
+		       shrinker->scan_objects, __builtin_return_address(0));
+		return;
+	}
+	if (!shrinker->shrink && !shrinker->count_objects &&
+	    !shrinker->scan_objects) {
+		pr_err("register_shrinker: REJECTED shrinker %p with no callbacks, "
+		       "registered by %pS\n",
+		       shrinker, __builtin_return_address(0));
+		return;
+	}
+
 	atomic_long_set(&shrinker->nr_in_batch, 0);
 	down_write(&shrinker_rwsem);
 	list_add_tail(&shrinker->list, &shrinker_list);
@@ -248,6 +311,22 @@ late_initcall(add_shrinker_debug);
  */
 void unregister_shrinker(struct shrinker *shrinker)
 {
+	/*
+	 * Defense in depth: skip list_del if the entry is
+	 * not on any list. Two ways this happens on this old kernel:
+	 *   - register_shrinker took the REJECTED early-return path
+	 *     (now mitigated by INIT_LIST_HEAD above, but kept for safety).
+	 *   - Slab/UAF corruption nulled the list pointers between register
+	 *     and unregister (real corruption seen during shutdown).
+	 * Without this, list_del faults at STR X1,[X2=NULL,#8].
+	 */
+	if (!shrinker->list.next || !shrinker->list.prev) {
+		pr_warn_once("unregister_shrinker: skipping %p, list not initialized "
+			     "(next=%p prev=%p), called by %pS\n",
+			     shrinker, shrinker->list.next,
+			     shrinker->list.prev, __builtin_return_address(0));
+		return;
+	}
 	down_write(&shrinker_rwsem);
 	list_del(&shrinker->list);
 	up_write(&shrinker_rwsem);
@@ -315,6 +394,20 @@ unsigned long shrink_slab(struct shrink_control *shrinkctl,
 
 		if (current_is_kswapd())
 			min_cache_size = 0;
+
+		/*
+		 * Defense against post-registration corruption (UAF, unloaded
+		 * module): skip if a callback isn't in kernel text, don't panic.
+		 */
+		if (!shrinker_ptr_valid(shrinker->shrink) ||
+		    !shrinker_ptr_valid(shrinker->count_objects) ||
+		    !shrinker_ptr_valid(shrinker->scan_objects)) {
+			pr_err_ratelimited("shrink_slab: skipping shrinker %p with bad callbacks (shrink=%p count=%p scan=%p)\n",
+					   shrinker, shrinker->shrink,
+					   shrinker->count_objects,
+					   shrinker->scan_objects);
+			continue;
+		}
 
 		if (shrinker->count_objects)
 			max_pass = shrinker->count_objects(shrinker, shrinkctl);

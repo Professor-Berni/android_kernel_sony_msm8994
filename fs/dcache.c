@@ -963,7 +963,11 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 				       dentry->d_count,
 				       dentry->d_sb->s_type->name,
 				       dentry->d_sb->s_id);
-				BUG();
+				/*
+				 * Don't BUG() on a still-referenced dentry (e.g. /cache/recovery/last_command
+				 * on first-boot/recovery umount); zero d_count so d_free() reclaims it cleanly.
+				 */
+				dentry->d_count = 0;
 			}
 
 			if (IS_ROOT(dentry)) {

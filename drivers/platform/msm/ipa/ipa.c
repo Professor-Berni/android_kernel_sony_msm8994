@@ -1716,19 +1716,17 @@ int ipa_q6_cleanup(void)
 int ipa_q6_pipe_reset(void)
 {
 	int client_idx;
-	int res;
+	int ep_idx;
 
-	if (!atomic_read(&ipa_ctx->uc_ctx.uc_loaded)) {
-		IPAERR("uC is not loaded, won't reset Q6 pipes\n");
-	} else {
-		for (client_idx = 0; client_idx < IPA_CLIENT_MAX; client_idx++)
-			if (IPA_CLIENT_IS_Q6_CONS(client_idx) ||
-			    IPA_CLIENT_IS_Q6_PROD(client_idx)) {
-				res = ipa_uc_reset_pipe(client_idx);
-				if (res)
-					BUG();
-			}
-	}
+	/* uC is dead on this modem; HW-reset Q6 pipes via SPS (uC path would BUG). */
+	for (client_idx = 0; client_idx < IPA_CLIENT_MAX; client_idx++)
+		if (IPA_CLIENT_IS_Q6_CONS(client_idx) ||
+		    IPA_CLIENT_IS_Q6_PROD(client_idx)) {
+			ep_idx = ipa_get_ep_mapping(client_idx);
+			if (ep_idx == -1)
+				continue;
+			sps_pipe_reset(ipa_ctx->bam_handle, ep_idx);
+		}
 
 	/* set proxy vote before decrement */
 	ipa_proxy_clk_vote();

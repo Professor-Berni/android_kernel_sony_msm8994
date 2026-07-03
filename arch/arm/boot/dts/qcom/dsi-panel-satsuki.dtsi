@@ -1861,6 +1861,10 @@
 				qcom,mdss-dsi-panel-timings = [E6 38 26 00 68 66 32 3C 14 03 04 00];
 				qcom,mdss-dsi-t-clk-post = <0x02>;
 				qcom,mdss-dsi-t-clk-pre = <0x28>;
+				qcom,mdss-dsi-lane-0-state;
+				qcom,mdss-dsi-lane-1-state;
+				qcom,mdss-dsi-lane-2-state;
+				qcom,mdss-dsi-lane-3-state;
 				somc,mdss-dsi-init-command = [39 01 00 00 00 00 06 F0 55 AA 52 08 07
 					15 01 00 00 00 00 02 EF 01
 					39 01 00 00 00 00 06 F0 55 AA 52 08 00
@@ -1937,6 +1941,10 @@
 				qcom,mdss-dsi-v-front-porch = <691>;
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-panel-timings = [E6 38 26 00 68 66 32 3C 2C 03 04 00];
+				qcom,mdss-dsi-lane-0-state;
+				qcom,mdss-dsi-lane-1-state;
+				qcom,mdss-dsi-lane-2-state;
+				qcom,mdss-dsi-lane-3-state;
 				qcom,mdss-dsi-t-clk-post = <0x02>;
 				qcom,mdss-dsi-t-clk-pre = <0x2B>;
 				somc,mdss-dsi-init-command = [15 01 00 00 00 00 02 90 02
@@ -2093,6 +2101,10 @@
 				qcom,mdss-dsi-panel-timings = [E6 38 26 00 68 66 32 3C 14 03 04 00];
 				qcom,mdss-dsi-t-clk-post = <0x02>;
 				qcom,mdss-dsi-t-clk-pre = <0x28>;
+				qcom,mdss-dsi-lane-0-state;
+				qcom,mdss-dsi-lane-1-state;
+				qcom,mdss-dsi-lane-2-state;
+				qcom,mdss-dsi-lane-3-state;
 
 				qcom,mdss-tear-check-sync-init-val = <3840>;
 				qcom,mdss-tear-check-start-pos = <3840>;
@@ -2112,6 +2124,10 @@
 				qcom,mdss-dsi-panel-timings = [E6 38 26 00 68 66 32 3C 2C 03 04 00];
 				qcom,mdss-dsi-t-clk-post = <0x02>;
 				qcom,mdss-dsi-t-clk-pre = <0x2B>;
+				qcom,mdss-dsi-lane-0-state;
+				qcom,mdss-dsi-lane-1-state;
+				qcom,mdss-dsi-lane-2-state;
+				qcom,mdss-dsi-lane-3-state;
 
 				qcom,mdss-dsi-fbc-enable;
 				qcom,mdss-dsi-fbc-ver2-mode;

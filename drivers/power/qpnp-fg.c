@@ -1303,8 +1303,12 @@ static int get_prop_capacity(struct fg_chip *chip)
 
 	if (chip->battery_missing)
 		return MISSING_CAPACITY;
-	if (!chip->profile_loaded && !chip->use_otp_profile)
+	if (!chip->profile_loaded && !chip->use_otp_profile) {
+		int raw = get_monotonic_soc_raw(chip);
+		if (raw > 0)
+			return DIV_ROUND_CLOSEST(raw * FULL_CAPACITY, FULL_SOC_RAW);
 		return DEFAULT_CAPACITY;
+	}
 	if (chip->charge_full)
 		return FULL_CAPACITY;
 	if (chip->soc_empty) {
@@ -5705,6 +5709,8 @@ static int fg_probe(struct spmi_device *spmi)
 	atomic_set(&chip->profile_wakeup_source.enabled, 0);
 	atomic_set(&chip->update_temp_wakeup_source.enabled, 0);
 	atomic_set(&chip->update_sram_wakeup_source.enabled, 0);
+	atomic_set(&chip->empty_check_wakeup_source.enabled, 0);
+	atomic_set(&chip->resume_soc_wakeup_source.enabled, 0);
 	mutex_init(&chip->rw_lock);
 	mutex_init(&chip->cyc_ctr.lock);
 	mutex_init(&chip->learning_data.learning_lock);

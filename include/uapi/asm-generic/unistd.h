@@ -693,14 +693,15 @@ __SC_COMP(__NR_process_vm_writev, sys_process_vm_writev, \
 __SYSCALL(__NR_kcmp, sys_kcmp)
 #define __NR_finit_module 273
 __SYSCALL(__NR_finit_module, sys_finit_module)
-/* Backporting seccomp, skip a few ...
- * #define __NR_sched_setattr 274
-__SYSCALL(__NR_sched_setattr, sys_sched_setattr)
- * #define __NR_sched_getattr 275
-__SYSCALL(__NR_sched_getattr, sys_sched_getattr)
- * #define __NR_renameat2 276
+/* Backporting seccomp: sched_setattr/getattr (274/275) are intentionally left
+ * as sys_ni_syscall — not implemented on this kernel. */
+
+/* Expose renameat2 (276); the implementation already exists in fs/namei.c.
+ * Without it userspace gets ENOSYS, breaking persistent property writes,
+ * installd layout updates, and other rename-with-flags users. */
+#define __NR_renameat2 276
 __SYSCALL(__NR_renameat2, sys_renameat2)
- */
+
 #define __NR_seccomp 277
 __SYSCALL(__NR_seccomp, sys_seccomp)
 #define __NR_getrandom 278
@@ -709,7 +710,379 @@ __SYSCALL(__NR_getrandom, sys_getrandom)
 __SYSCALL(__NR_memfd_create, sys_memfd_create)
 
 #undef __NR_syscalls
-#define __NR_syscalls 280
+#define __NR_execveat 281
+__SC_COMP(__NR_execveat, sys_execveat, compat_sys_execveat)
+
+#define __NR_userfaultfd 282
+/* minimal userfaultfd stub (fs/userfaultfd.c): returns a valid fd;
+ * UFFDIO_API works (features=0); other ioctls return -EINVAL. Sufficient
+ * for ART feature detection on kernel 3.10. */
+__SYSCALL(__NR_userfaultfd, sys_userfaultfd)
+#define __NR_membarrier 283
+/* minimal membarrier stub (fs/userfaultfd.c) */
+__SYSCALL(__NR_membarrier, sys_membarrier)
+#define __NR_mlock2 284
+__SYSCALL(__NR_mlock2, sys_ni_syscall)
+#define __NR_copy_file_range 285
+__SYSCALL(__NR_copy_file_range, sys_ni_syscall)
+#define __NR_preadv2 286
+__SYSCALL(__NR_preadv2, sys_ni_syscall)
+#define __NR_pwritev2 287
+__SYSCALL(__NR_pwritev2, sys_ni_syscall)
+#define __NR_pkey_mprotect 288
+__SYSCALL(__NR_pkey_mprotect, sys_ni_syscall)
+#define __NR_pkey_alloc 289
+__SYSCALL(__NR_pkey_alloc, sys_ni_syscall)
+#define __NR_pkey_free 290
+__SYSCALL(__NR_pkey_free, sys_ni_syscall)
+#define __NR_statx 291
+__SYSCALL(__NR_statx, sys_statx)
+#define __NR_io_pgetevents 292
+__SYSCALL(__NR_io_pgetevents, sys_ni_syscall)
+#define __NR_rseq 293
+__SYSCALL(__NR_rseq, sys_ni_syscall)
+#define __NR_ni_stub_294 294
+__SYSCALL(__NR_ni_stub_294, sys_ni_syscall)
+#define __NR_ni_stub_295 295
+__SYSCALL(__NR_ni_stub_295, sys_ni_syscall)
+#define __NR_ni_stub_296 296
+__SYSCALL(__NR_ni_stub_296, sys_ni_syscall)
+#define __NR_ni_stub_297 297
+__SYSCALL(__NR_ni_stub_297, sys_ni_syscall)
+#define __NR_ni_stub_298 298
+__SYSCALL(__NR_ni_stub_298, sys_ni_syscall)
+#define __NR_ni_stub_299 299
+__SYSCALL(__NR_ni_stub_299, sys_ni_syscall)
+#define __NR_ni_stub_300 300
+__SYSCALL(__NR_ni_stub_300, sys_ni_syscall)
+#define __NR_ni_stub_301 301
+__SYSCALL(__NR_ni_stub_301, sys_ni_syscall)
+#define __NR_ni_stub_302 302
+__SYSCALL(__NR_ni_stub_302, sys_ni_syscall)
+#define __NR_ni_stub_303 303
+__SYSCALL(__NR_ni_stub_303, sys_ni_syscall)
+#define __NR_ni_stub_304 304
+__SYSCALL(__NR_ni_stub_304, sys_ni_syscall)
+#define __NR_ni_stub_305 305
+__SYSCALL(__NR_ni_stub_305, sys_ni_syscall)
+#define __NR_ni_stub_306 306
+__SYSCALL(__NR_ni_stub_306, sys_ni_syscall)
+#define __NR_ni_stub_307 307
+__SYSCALL(__NR_ni_stub_307, sys_ni_syscall)
+#define __NR_ni_stub_308 308
+__SYSCALL(__NR_ni_stub_308, sys_ni_syscall)
+#define __NR_ni_stub_309 309
+__SYSCALL(__NR_ni_stub_309, sys_ni_syscall)
+#define __NR_ni_stub_310 310
+__SYSCALL(__NR_ni_stub_310, sys_ni_syscall)
+#define __NR_ni_stub_311 311
+__SYSCALL(__NR_ni_stub_311, sys_ni_syscall)
+#define __NR_ni_stub_312 312
+__SYSCALL(__NR_ni_stub_312, sys_ni_syscall)
+#define __NR_ni_stub_313 313
+__SYSCALL(__NR_ni_stub_313, sys_ni_syscall)
+#define __NR_ni_stub_314 314
+__SYSCALL(__NR_ni_stub_314, sys_ni_syscall)
+#define __NR_ni_stub_315 315
+__SYSCALL(__NR_ni_stub_315, sys_ni_syscall)
+#define __NR_ni_stub_316 316
+__SYSCALL(__NR_ni_stub_316, sys_ni_syscall)
+#define __NR_ni_stub_317 317
+__SYSCALL(__NR_ni_stub_317, sys_ni_syscall)
+#define __NR_ni_stub_318 318
+__SYSCALL(__NR_ni_stub_318, sys_ni_syscall)
+#define __NR_ni_stub_319 319
+__SYSCALL(__NR_ni_stub_319, sys_ni_syscall)
+#define __NR_ni_stub_320 320
+__SYSCALL(__NR_ni_stub_320, sys_ni_syscall)
+#define __NR_ni_stub_321 321
+__SYSCALL(__NR_ni_stub_321, sys_ni_syscall)
+#define __NR_ni_stub_322 322
+__SYSCALL(__NR_ni_stub_322, sys_ni_syscall)
+#define __NR_ni_stub_323 323
+__SYSCALL(__NR_ni_stub_323, sys_ni_syscall)
+#define __NR_ni_stub_324 324
+__SYSCALL(__NR_ni_stub_324, sys_ni_syscall)
+#define __NR_ni_stub_325 325
+__SYSCALL(__NR_ni_stub_325, sys_ni_syscall)
+#define __NR_ni_stub_326 326
+__SYSCALL(__NR_ni_stub_326, sys_ni_syscall)
+#define __NR_ni_stub_327 327
+__SYSCALL(__NR_ni_stub_327, sys_ni_syscall)
+#define __NR_ni_stub_328 328
+__SYSCALL(__NR_ni_stub_328, sys_ni_syscall)
+#define __NR_ni_stub_329 329
+__SYSCALL(__NR_ni_stub_329, sys_ni_syscall)
+#define __NR_ni_stub_330 330
+__SYSCALL(__NR_ni_stub_330, sys_ni_syscall)
+#define __NR_ni_stub_331 331
+__SYSCALL(__NR_ni_stub_331, sys_ni_syscall)
+#define __NR_ni_stub_332 332
+__SYSCALL(__NR_ni_stub_332, sys_ni_syscall)
+#define __NR_ni_stub_333 333
+__SYSCALL(__NR_ni_stub_333, sys_ni_syscall)
+#define __NR_ni_stub_334 334
+__SYSCALL(__NR_ni_stub_334, sys_ni_syscall)
+#define __NR_ni_stub_335 335
+__SYSCALL(__NR_ni_stub_335, sys_ni_syscall)
+#define __NR_ni_stub_336 336
+__SYSCALL(__NR_ni_stub_336, sys_ni_syscall)
+#define __NR_ni_stub_337 337
+__SYSCALL(__NR_ni_stub_337, sys_ni_syscall)
+#define __NR_ni_stub_338 338
+__SYSCALL(__NR_ni_stub_338, sys_ni_syscall)
+#define __NR_ni_stub_339 339
+__SYSCALL(__NR_ni_stub_339, sys_ni_syscall)
+#define __NR_ni_stub_340 340
+__SYSCALL(__NR_ni_stub_340, sys_ni_syscall)
+#define __NR_ni_stub_341 341
+__SYSCALL(__NR_ni_stub_341, sys_ni_syscall)
+#define __NR_ni_stub_342 342
+__SYSCALL(__NR_ni_stub_342, sys_ni_syscall)
+#define __NR_ni_stub_343 343
+__SYSCALL(__NR_ni_stub_343, sys_ni_syscall)
+#define __NR_ni_stub_344 344
+__SYSCALL(__NR_ni_stub_344, sys_ni_syscall)
+#define __NR_ni_stub_345 345
+__SYSCALL(__NR_ni_stub_345, sys_ni_syscall)
+#define __NR_ni_stub_346 346
+__SYSCALL(__NR_ni_stub_346, sys_ni_syscall)
+#define __NR_ni_stub_347 347
+__SYSCALL(__NR_ni_stub_347, sys_ni_syscall)
+#define __NR_ni_stub_348 348
+__SYSCALL(__NR_ni_stub_348, sys_ni_syscall)
+#define __NR_ni_stub_349 349
+__SYSCALL(__NR_ni_stub_349, sys_ni_syscall)
+#define __NR_ni_stub_350 350
+__SYSCALL(__NR_ni_stub_350, sys_ni_syscall)
+#define __NR_ni_stub_351 351
+__SYSCALL(__NR_ni_stub_351, sys_ni_syscall)
+#define __NR_ni_stub_352 352
+__SYSCALL(__NR_ni_stub_352, sys_ni_syscall)
+#define __NR_ni_stub_353 353
+__SYSCALL(__NR_ni_stub_353, sys_ni_syscall)
+#define __NR_ni_stub_354 354
+__SYSCALL(__NR_ni_stub_354, sys_ni_syscall)
+#define __NR_ni_stub_355 355
+__SYSCALL(__NR_ni_stub_355, sys_ni_syscall)
+#define __NR_ni_stub_356 356
+__SYSCALL(__NR_ni_stub_356, sys_ni_syscall)
+#define __NR_ni_stub_357 357
+__SYSCALL(__NR_ni_stub_357, sys_ni_syscall)
+#define __NR_ni_stub_358 358
+__SYSCALL(__NR_ni_stub_358, sys_ni_syscall)
+#define __NR_ni_stub_359 359
+__SYSCALL(__NR_ni_stub_359, sys_ni_syscall)
+#define __NR_ni_stub_360 360
+__SYSCALL(__NR_ni_stub_360, sys_ni_syscall)
+#define __NR_ni_stub_361 361
+__SYSCALL(__NR_ni_stub_361, sys_ni_syscall)
+#define __NR_ni_stub_362 362
+__SYSCALL(__NR_ni_stub_362, sys_ni_syscall)
+#define __NR_ni_stub_363 363
+__SYSCALL(__NR_ni_stub_363, sys_ni_syscall)
+#define __NR_ni_stub_364 364
+__SYSCALL(__NR_ni_stub_364, sys_ni_syscall)
+#define __NR_ni_stub_365 365
+__SYSCALL(__NR_ni_stub_365, sys_ni_syscall)
+#define __NR_ni_stub_366 366
+__SYSCALL(__NR_ni_stub_366, sys_ni_syscall)
+#define __NR_ni_stub_367 367
+__SYSCALL(__NR_ni_stub_367, sys_ni_syscall)
+#define __NR_ni_stub_368 368
+__SYSCALL(__NR_ni_stub_368, sys_ni_syscall)
+#define __NR_ni_stub_369 369
+__SYSCALL(__NR_ni_stub_369, sys_ni_syscall)
+#define __NR_ni_stub_370 370
+__SYSCALL(__NR_ni_stub_370, sys_ni_syscall)
+#define __NR_ni_stub_371 371
+__SYSCALL(__NR_ni_stub_371, sys_ni_syscall)
+#define __NR_ni_stub_372 372
+__SYSCALL(__NR_ni_stub_372, sys_ni_syscall)
+#define __NR_ni_stub_373 373
+__SYSCALL(__NR_ni_stub_373, sys_ni_syscall)
+#define __NR_ni_stub_374 374
+__SYSCALL(__NR_ni_stub_374, sys_ni_syscall)
+#define __NR_ni_stub_375 375
+__SYSCALL(__NR_ni_stub_375, sys_ni_syscall)
+#define __NR_ni_stub_376 376
+__SYSCALL(__NR_ni_stub_376, sys_ni_syscall)
+#define __NR_ni_stub_377 377
+__SYSCALL(__NR_ni_stub_377, sys_ni_syscall)
+#define __NR_ni_stub_378 378
+__SYSCALL(__NR_ni_stub_378, sys_ni_syscall)
+#define __NR_ni_stub_379 379
+__SYSCALL(__NR_ni_stub_379, sys_ni_syscall)
+#define __NR_ni_stub_380 380
+__SYSCALL(__NR_ni_stub_380, sys_ni_syscall)
+#define __NR_ni_stub_381 381
+__SYSCALL(__NR_ni_stub_381, sys_ni_syscall)
+#define __NR_ni_stub_382 382
+__SYSCALL(__NR_ni_stub_382, sys_ni_syscall)
+#define __NR_ni_stub_383 383
+__SYSCALL(__NR_ni_stub_383, sys_ni_syscall)
+#define __NR_ni_stub_384 384
+__SYSCALL(__NR_ni_stub_384, sys_ni_syscall)
+#define __NR_ni_stub_385 385
+__SYSCALL(__NR_ni_stub_385, sys_ni_syscall)
+#define __NR_ni_stub_386 386
+__SYSCALL(__NR_ni_stub_386, sys_ni_syscall)
+#define __NR_ni_stub_387 387
+__SYSCALL(__NR_ni_stub_387, sys_ni_syscall)
+#define __NR_ni_stub_388 388
+__SYSCALL(__NR_ni_stub_388, sys_ni_syscall)
+#define __NR_ni_stub_389 389
+__SYSCALL(__NR_ni_stub_389, sys_ni_syscall)
+#define __NR_ni_stub_390 390
+__SYSCALL(__NR_ni_stub_390, sys_ni_syscall)
+#define __NR_ni_stub_391 391
+__SYSCALL(__NR_ni_stub_391, sys_ni_syscall)
+#define __NR_ni_stub_392 392
+__SYSCALL(__NR_ni_stub_392, sys_ni_syscall)
+#define __NR_ni_stub_393 393
+__SYSCALL(__NR_ni_stub_393, sys_ni_syscall)
+#define __NR_ni_stub_394 394
+__SYSCALL(__NR_ni_stub_394, sys_ni_syscall)
+#define __NR_ni_stub_395 395
+__SYSCALL(__NR_ni_stub_395, sys_ni_syscall)
+#define __NR_ni_stub_396 396
+__SYSCALL(__NR_ni_stub_396, sys_ni_syscall)
+#define __NR_ni_stub_397 397
+__SYSCALL(__NR_ni_stub_397, sys_ni_syscall)
+#define __NR_ni_stub_398 398
+__SYSCALL(__NR_ni_stub_398, sys_ni_syscall)
+#define __NR_ni_stub_399 399
+__SYSCALL(__NR_ni_stub_399, sys_ni_syscall)
+#define __NR_ni_stub_400 400
+__SYSCALL(__NR_ni_stub_400, sys_ni_syscall)
+#define __NR_ni_stub_401 401
+__SYSCALL(__NR_ni_stub_401, sys_ni_syscall)
+#define __NR_ni_stub_402 402
+__SYSCALL(__NR_ni_stub_402, sys_ni_syscall)
+#define __NR_ni_stub_403 403
+__SYSCALL(__NR_ni_stub_403, sys_ni_syscall)
+#define __NR_ni_stub_404 404
+__SYSCALL(__NR_ni_stub_404, sys_ni_syscall)
+#define __NR_ni_stub_405 405
+__SYSCALL(__NR_ni_stub_405, sys_ni_syscall)
+#define __NR_ni_stub_406 406
+__SYSCALL(__NR_ni_stub_406, sys_ni_syscall)
+#define __NR_ni_stub_407 407
+__SYSCALL(__NR_ni_stub_407, sys_ni_syscall)
+#define __NR_ni_stub_408 408
+__SYSCALL(__NR_ni_stub_408, sys_ni_syscall)
+#define __NR_ni_stub_409 409
+__SYSCALL(__NR_ni_stub_409, sys_ni_syscall)
+#define __NR_ni_stub_410 410
+__SYSCALL(__NR_ni_stub_410, sys_ni_syscall)
+#define __NR_ni_stub_411 411
+__SYSCALL(__NR_ni_stub_411, sys_ni_syscall)
+#define __NR_ni_stub_412 412
+__SYSCALL(__NR_ni_stub_412, sys_ni_syscall)
+#define __NR_ni_stub_413 413
+__SYSCALL(__NR_ni_stub_413, sys_ni_syscall)
+#define __NR_ni_stub_414 414
+__SYSCALL(__NR_ni_stub_414, sys_ni_syscall)
+#define __NR_ni_stub_415 415
+__SYSCALL(__NR_ni_stub_415, sys_ni_syscall)
+#define __NR_ni_stub_416 416
+__SYSCALL(__NR_ni_stub_416, sys_ni_syscall)
+#define __NR_ni_stub_417 417
+__SYSCALL(__NR_ni_stub_417, sys_ni_syscall)
+#define __NR_ni_stub_418 418
+__SYSCALL(__NR_ni_stub_418, sys_ni_syscall)
+#define __NR_ni_stub_419 419
+__SYSCALL(__NR_ni_stub_419, sys_ni_syscall)
+#define __NR_ni_stub_420 420
+__SYSCALL(__NR_ni_stub_420, sys_ni_syscall)
+#define __NR_ni_stub_421 421
+__SYSCALL(__NR_ni_stub_421, sys_ni_syscall)
+#define __NR_ni_stub_422 422
+__SYSCALL(__NR_ni_stub_422, sys_ni_syscall)
+#define __NR_ni_stub_423 423
+__SYSCALL(__NR_ni_stub_423, sys_ni_syscall)
+#define __NR_pidfd_send_signal 424
+__SYSCALL(__NR_pidfd_send_signal, sys_ni_syscall)
+#define __NR_io_uring_setup 425
+__SYSCALL(__NR_io_uring_setup, sys_ni_syscall)
+#define __NR_io_uring_enter 426
+__SYSCALL(__NR_io_uring_enter, sys_ni_syscall)
+#define __NR_io_uring_register 427
+__SYSCALL(__NR_io_uring_register, sys_ni_syscall)
+#define __NR_open_tree 428
+__SYSCALL(__NR_open_tree, sys_ni_syscall)
+#define __NR_move_mount 429
+__SYSCALL(__NR_move_mount, sys_ni_syscall)
+#define __NR_fsopen 430
+__SYSCALL(__NR_fsopen, sys_ni_syscall)
+#define __NR_fsconfig 431
+__SYSCALL(__NR_fsconfig, sys_ni_syscall)
+#define __NR_fsmount 432
+__SYSCALL(__NR_fsmount, sys_ni_syscall)
+#define __NR_fspick 433
+__SYSCALL(__NR_fspick, sys_ni_syscall)
+#define __NR_pidfd_open 434
+__SYSCALL(__NR_pidfd_open, sys_ni_syscall)
+#define __NR_clone3 435
+__SYSCALL(__NR_clone3, sys_clone3)
+#define __NR_close_range 436
+__SYSCALL(__NR_close_range, sys_ni_syscall)
+#define __NR_openat2 437
+__SYSCALL(__NR_openat2, sys_ni_syscall)
+#define __NR_pidfd_getfd 438
+__SYSCALL(__NR_pidfd_getfd, sys_ni_syscall)
+#define __NR_faccessat2 439
+__SYSCALL(__NR_faccessat2, sys_ni_syscall)
+#define __NR_process_madvise 440
+__SYSCALL(__NR_process_madvise, sys_ni_syscall)
+#define __NR_epoll_pwait2 441
+/* epoll_pwait2 (Linux 5.11): wrapper over sys_epoll_pwait that accepts a
+ * struct timespec __user* timeout instead of int ms. Without it BootAnimation
+ * and BLASTBufferQueue spam ENOSYS retries, blocking SurfaceFlinger. */
+__SYSCALL(__NR_epoll_pwait2, sys_epoll_pwait2)
+#define __NR_mount_setattr 442
+__SYSCALL(__NR_mount_setattr, sys_ni_syscall)
+#define __NR_quotactl_fd 443
+__SYSCALL(__NR_quotactl_fd, sys_ni_syscall)
+#define __NR_landlock_create_ruleset 444
+__SYSCALL(__NR_landlock_create_ruleset, sys_ni_syscall)
+#define __NR_landlock_add_rule 445
+__SYSCALL(__NR_landlock_add_rule, sys_ni_syscall)
+#define __NR_landlock_restrict_self 446
+__SYSCALL(__NR_landlock_restrict_self, sys_ni_syscall)
+#define __NR_memfd_secret 447
+__SYSCALL(__NR_memfd_secret, sys_ni_syscall)
+#define __NR_process_mrelease 448
+__SYSCALL(__NR_process_mrelease, sys_ni_syscall)
+#define __NR_futex_waitv 449
+__SYSCALL(__NR_futex_waitv, sys_ni_syscall)
+#define __NR_set_mempolicy_home_node 450
+__SYSCALL(__NR_set_mempolicy_home_node, sys_ni_syscall)
+#define __NR_ni_stub_451 451
+__SYSCALL(__NR_ni_stub_451, sys_ni_syscall)
+#define __NR_ni_stub_452 452
+__SYSCALL(__NR_ni_stub_452, sys_ni_syscall)
+#define __NR_ni_stub_453 453
+__SYSCALL(__NR_ni_stub_453, sys_ni_syscall)
+#define __NR_ni_stub_454 454
+__SYSCALL(__NR_ni_stub_454, sys_ni_syscall)
+#define __NR_ni_stub_455 455
+__SYSCALL(__NR_ni_stub_455, sys_ni_syscall)
+#define __NR_ni_stub_456 456
+__SYSCALL(__NR_ni_stub_456, sys_ni_syscall)
+#define __NR_ni_stub_457 457
+__SYSCALL(__NR_ni_stub_457, sys_ni_syscall)
+#define __NR_ni_stub_458 458
+__SYSCALL(__NR_ni_stub_458, sys_ni_syscall)
+#define __NR_ni_stub_459 459
+__SYSCALL(__NR_ni_stub_459, sys_ni_syscall)
+#define __NR_ni_stub_460 460
+__SYSCALL(__NR_ni_stub_460, sys_ni_syscall)
+#define __NR_ni_stub_461 461
+__SYSCALL(__NR_ni_stub_461, sys_ni_syscall)
+#define __NR_ni_stub_462 462
+__SYSCALL(__NR_ni_stub_462, sys_ni_syscall)
+#define __NR_syscalls 463
 
 /*
  * All syscalls below here should go away really,

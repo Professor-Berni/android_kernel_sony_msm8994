@@ -3520,6 +3520,8 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		 * line after changing the pull configs.
 		 */
 		usleep_range(10000, 10500);
+		/* CD GPIO IRQ doesn't fire on the card-detect line; poll instead. */
+		msm_host->mmc->caps |= MMC_CAP_NEEDS_POLL;
 		ret = mmc_gpio_request_cd(msm_host->mmc,
 				msm_host->pdata->status_gpio);
 		if (ret) {

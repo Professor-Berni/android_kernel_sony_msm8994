@@ -3521,8 +3521,9 @@ void mmc_rescan(struct work_struct *work)
 	if (extend_wakelock && !host->rescan_disable)
 		wake_lock_timeout(&host->detect_wake_lock, HZ / 2);
 
+	/* poll card-detect every 3s (only the SD slot uses NEEDS_POLL here) */
 	if (host->caps & MMC_CAP_NEEDS_POLL)
-		mmc_schedule_delayed_work(&host->detect, HZ);
+		mmc_schedule_delayed_work(&host->detect, 3 * HZ);
 
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 	host->rescan_exec_flag = 0;

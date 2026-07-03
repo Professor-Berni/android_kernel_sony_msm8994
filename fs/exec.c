@@ -1736,3 +1736,60 @@ asmlinkage long compat_sys_execve(const char __user * filename,
 	return compat_do_execve(getname(filename), argv, envp);
 }
 #endif
+
+SYSCALL_DEFINE5(execveat,
+		int, fd,
+		const char __user *, filename,
+		const char __user *const __user *, argv,
+		const char __user *const __user *, envp,
+		int, flags)
+{
+	struct filename *path;
+
+	if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
+		return -EINVAL;
+
+	if (flags & AT_EMPTY_PATH) {
+		char buf[64];
+		if (fd == AT_FDCWD)
+			return -ENOENT;
+		snprintf(buf, sizeof(buf), "/proc/self/fd/%d", fd);
+		path = getname_kernel(buf);
+	} else {
+		path = getname(filename);
+	}
+
+	if (IS_ERR(path))
+		return PTR_ERR(path);
+
+	return do_execve(path, argv, envp);
+}
+
+#ifdef CONFIG_COMPAT
+asmlinkage long compat_sys_execveat(int fd,
+		const char __user *filename,
+		const compat_uptr_t __user *argv,
+		const compat_uptr_t __user *envp,
+		int flags)
+{
+	struct filename *path;
+
+	if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
+		return -EINVAL;
+
+	if (flags & AT_EMPTY_PATH) {
+		char buf[64];
+		if (fd == AT_FDCWD)
+			return -ENOENT;
+		snprintf(buf, sizeof(buf), "/proc/self/fd/%d", fd);
+		path = getname_kernel(buf);
+	} else {
+		path = getname(filename);
+	}
+
+	if (IS_ERR(path))
+		return PTR_ERR(path);
+
+	return compat_do_execve(path, argv, envp);
+}
+#endif

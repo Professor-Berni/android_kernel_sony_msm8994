@@ -64,7 +64,9 @@ static atomic_t is_ssr;
 
 u32 apps_to_ipa_hdl, ipa_to_apps_hdl; /* get handler from ipa */
 static struct mutex add_mux_channel_lock;
-static int wwan_add_ul_flt_rule_to_ipa(void);
+/* Non-static: ipa_qmi_service.c's notify worker installs the rules and sends
+ * FILTER_INSTALLED_NOTIF_REQ with real handles (modem rejects synthetic ones). */
+int wwan_add_ul_flt_rule_to_ipa(void);
 static int wwan_del_ul_flt_rule_to_ipa(void);
 
 static void wake_tx_queue(struct work_struct *work);
@@ -556,7 +558,7 @@ int copy_ul_filter_rule_to_ipa(struct ipa_install_fltr_rule_req_msg_v01
 	return rc;
 }
 
-static int wwan_add_ul_flt_rule_to_ipa(void)
+int wwan_add_ul_flt_rule_to_ipa(void)
 {
 	u32 pyld_sz;
 	int i, retval = 0;
@@ -2596,22 +2598,15 @@ void ipa_broadcast_quota_reach_ind(u32 mux_id)
  */
 void ipa_q6_handshake_complete(bool ssr_bootup)
 {
-	if (ssr_bootup) {
-		/*
-		 * In case the uC is required to be loaded by the Modem,
-		 * the proxy vote will be removed only when uC loading is
-		 * complete and indication is received by the AP. After SSR,
-		 * uC is already loaded. Therefore, proxy vote can be removed
-		 * once Modem init is complete.
-		 */
-		ipa_proxy_clk_unvote();
-
-		/*
-		 * It is required to recover the network stats after
-		 * SSR recovery
-		 */
-		rmnet_ipa_get_network_stats_and_update();
+	/* Sony A7 IPA uC never sends INIT_COMPLETED, so uc_loaded stays 0; force it
+	 * to 1 so qmi_init_modem_send_sync_msg reports is_ssr_bootup=1. */
+	if (!ipa_uc_loaded_check()) {
+		atomic_set(&ipa_ctx->uc_ctx.uc_loaded, 1);
 	}
+	ipa_proxy_clk_unvote();
+	/* Run this QMI apn-data-stats refresh on first boot too, not just SSR:
+	 * the modem panics on first boot otherwise. */
+	rmnet_ipa_get_network_stats_and_update();
 }
 
 static int __init ipa_wwan_init(void)

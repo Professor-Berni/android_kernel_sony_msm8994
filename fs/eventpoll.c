@@ -2012,6 +2012,43 @@ SYSCALL_DEFINE6(epoll_pwait, int, epfd, struct epoll_event __user *, events,
 	return error;
 }
 
+/*
+ * epoll_pwait2 (Linux 5.11): accepts a `struct timespec` timeout
+ * (nanosecond precision) instead of an `int` milliseconds. SurfaceFlinger/
+ * libgui (BootAnimation, BLASTBufferQueue) call it directly and get ENOSYS
+ * on stock 3.10, which blocks composition.
+ *
+ * Convert the timespec to int ms (clamping to INT_MAX) and delegate to
+ * sys_epoll_pwait; ms precision is fine for the ~16ms vsync callers.
+ */
+SYSCALL_DEFINE6(epoll_pwait2, int, epfd, struct epoll_event __user *, events,
+		int, maxevents, const struct timespec __user *, timeout,
+		const sigset_t __user *, sigmask, size_t, sigsetsize)
+{
+	int ms_timeout = -1;	/* -1 == infinite, matches sys_epoll_pwait */
+
+	if (timeout) {
+		struct timespec ts;
+		long ms;
+
+		if (copy_from_user(&ts, timeout, sizeof(ts)))
+			return -EFAULT;
+		if (ts.tv_sec < 0 || ts.tv_nsec < 0 || ts.tv_nsec >= 1000000000L)
+			return -EINVAL;
+
+		/* Convert to ms with overflow protection */
+		if (ts.tv_sec >= (INT_MAX - 1) / 1000)
+			ms_timeout = INT_MAX;
+		else {
+			ms = ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+			ms_timeout = (ms > INT_MAX) ? INT_MAX : (int)ms;
+		}
+	}
+
+	return sys_epoll_pwait(epfd, events, maxevents, ms_timeout,
+			       sigmask, sigsetsize);
+}
+
 #ifdef CONFIG_COMPAT
 COMPAT_SYSCALL_DEFINE6(epoll_pwait, int, epfd,
 			struct epoll_event __user *, events,

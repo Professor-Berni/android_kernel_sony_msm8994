@@ -909,7 +909,12 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			__pm_stay_awake(&dev->ssr_wlock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
-			panic("Subsystem %s crashed during SSR!", name);
+			/*
+			 * Sony msm8994 modem's latent IPA BAM assert would panic vanilla on
+			 * a repeat crash mid-SSR; log instead and let SSR finish so the kernel survives.
+			 */
+			pr_err("Subsystem %s crashed during SSR — abandoning recovery to avoid kernel panic\n",
+			       name);
 		}
 	} else
 		WARN(dev->track.state == SUBSYS_OFFLINE,

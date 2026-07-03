@@ -3004,6 +3004,9 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
 	ee_len    = ext4_ext_get_actual_len(ex);
 	ee_pblock = ext4_ext_pblock(ex);
 
+	if (ext4_encrypted_inode(inode))
+		return ext4_encrypted_zeroout(inode, ex);
+
 	ret = sb_issue_zeroout(inode->i_sb, ee_pblock, ee_len, GFP_NOFS);
 	if (ret > 0)
 		ret = 0;
@@ -3425,9 +3428,13 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
 	 */
 	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
 
-	if (EXT4_EXT_MAY_ZEROOUT & split_flag)
+	if ((EXT4_EXT_MAY_ZEROOUT & split_flag) &&
+	    !ext4_encrypted_inode(inode))
 		max_zeroout = sbi->s_extent_max_zeroout_kb >>
 			(inode->i_sb->s_blocksize_bits - 10);
+
+	if (ext4_encrypted_inode(inode))
+		max_zeroout = 0;
 
 	/* If extent is less than s_max_zeroout_kb, zeroout directly */
 	if (max_zeroout && (ee_len <= max_zeroout)) {

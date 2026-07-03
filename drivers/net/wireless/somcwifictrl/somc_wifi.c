@@ -122,6 +122,9 @@ err_gpio:
 			__func__);
 err_pinctrl:
 	kzfree(bcmdhd_data);
+	/* Clear the freed static so a later set_power/set_carddetect doesn't
+	 * UAF (NULL-deref on driver rebind). */
+	bcmdhd_data = NULL;
 err_alloc_bcmdhd_data:
 	return ret;
 }
@@ -152,14 +155,26 @@ void somc_wifi_mmc_host_register(struct mmc_host *host)
 
 int somc_wifi_set_power(int on)
 {
-	gpio_set_value(bcmdhd_data->wlan_reg_on, on);
-	return 0;
+	/* bcmdhd's probe can call this even after somc_wifi_init failed
+	 * (freed bcmdhd_data dangling) → NULL/UAF deref; guard it. */
+	if (!bcmdhd_data || !gpio_is_valid(bcmdhd_data->wlan_reg_on)) {
+		pr_err("%s: wlan_reg_on gpio not initialized\n", __func__);
+		return -ENODEV;
+	}
+	/* Drive WL_REG_ON as output: gpio_set_value() alone never claims OUTPUT
+	 * direction, leaving the chip unpowered and PCIe enumeration failing. */
+	return gpio_direction_output(bcmdhd_data->wlan_reg_on, on);
 }
 
 #ifdef CONFIG_BCMDHD_PCIE
 int somc_wifi_set_carddetect(int present)
 {
 	int ret = 0;
+	/* same dangling-pointer guard as set_power */
+	if (!bcmdhd_data) {
+		pr_err("%s: bcmdhd_data not initialized\n", __func__);
+		return -ENODEV;
+	}
 	if (present)
 		ret = msm_pcie_enumerate_locked(bcmdhd_data->pci_number);
 	return ret;

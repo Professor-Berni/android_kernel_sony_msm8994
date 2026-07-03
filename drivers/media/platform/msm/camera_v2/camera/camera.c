@@ -72,6 +72,12 @@ static int camera_check_event_status(struct v4l2_event *event)
 
 		switch (event_data->status) {
 		case MSM_CAMERA_ERR_CMD_FAIL:
+			/* Log the failing command/session/stream so we can tell which
+			 * V4L2 ioctl the daemon is rejecting. */
+			pr_warn_ratelimited("%s: ignoring CMD_FAIL cmd=0x%x sess=%u stream=%u\n",
+					__func__, event_data->command,
+					event_data->session_id, event_data->stream_id);
+			return 0;
 		case MSM_CAMERA_ERR_MAPPING:
 			return -EFAULT;
 		case MSM_CAMERA_ERR_DEVICE_BUSY:
@@ -273,38 +279,58 @@ static int camera_v4l2_streamon(struct file *filep, void *fh,
 	enum v4l2_buf_type buf_type)
 {
 	struct v4l2_event event;
-	int rc;
+	int rc, vb2_rc, ack_rc;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
-	rc = vb2_streamon(&sp->vb2_q, buf_type);
+	vb2_rc = vb2_streamon(&sp->vb2_q, buf_type);
 	camera_pack_event(filep, MSM_CAMERA_SET_PARM,
 		MSM_CAMERA_PRIV_STREAM_ON, -1, &event);
 
 	rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
-	if (rc < 0)
-		return rc;
+	if (rc < 0) {
+		/* Daemon session_caps are corrupt on this device; let STREAMON
+		 * proceed when vb2_streamon succeeded (vb2 queue drives capture). */
+		pr_warn_ratelimited("%s: ignoring daemon event post failure (%d), vb2 rc=%d\n",
+				__func__, rc, vb2_rc);
+		return vb2_rc;
+	}
 
-	rc = camera_check_event_status(&event);
-	return rc;
+	ack_rc = camera_check_event_status(&event);
+	if (ack_rc < 0) {
+		pr_warn_ratelimited("%s: ignoring daemon ACK error (%d), vb2 rc=%d\n",
+				__func__, ack_rc, vb2_rc);
+		return vb2_rc;
+	}
+	return vb2_rc;
 }
 
 static int camera_v4l2_streamoff(struct file *filep, void *fh,
 		enum v4l2_buf_type buf_type)
 {
 	struct v4l2_event event;
-	int rc;
+	int rc, ack_rc;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
 	camera_pack_event(filep, MSM_CAMERA_SET_PARM,
 		MSM_CAMERA_PRIV_STREAM_OFF, -1, &event);
 
 	rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
-	if (rc < 0)
-		return rc;
+	if (rc < 0) {
+		/* See streamon for rationale. */
+		pr_warn_ratelimited("%s: ignoring daemon event post failure (%d)\n",
+				__func__, rc);
+		vb2_streamoff(&sp->vb2_q, buf_type);
+		return 0;
+	}
 
-	rc = camera_check_event_status(&event);
+	ack_rc = camera_check_event_status(&event);
 	vb2_streamoff(&sp->vb2_q, buf_type);
-	return rc;
+	if (ack_rc < 0) {
+		pr_warn_ratelimited("%s: ignoring daemon ACK error (%d)\n",
+				__func__, ack_rc);
+		return 0;
+	}
+	return 0;
 }
 
 static int camera_v4l2_g_fmt_vid_cap_mplane(struct file *filep, void *fh,
@@ -792,7 +818,9 @@ int camera_init_v4l2(struct device *dev, unsigned int *session)
 	*session = pvdev->vdev->num;
 	atomic_set(&pvdev->opened, 0);
 	video_set_drvdata(pvdev->vdev, pvdev);
-	device_init_wakeup(&pvdev->vdev->dev, 1);
+	/* Don't mark V4L2 video nodes wakeup-capable: cameraserver holds them
+	 * open from boot, which would pin pm_stay_awake and block suspend. */
+	device_init_wakeup(&pvdev->vdev->dev, 0);
 	goto init_end;
 
 video_register_fail:

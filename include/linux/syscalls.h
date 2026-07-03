@@ -632,6 +632,13 @@ asmlinkage long sys_epoll_pwait(int epfd, struct epoll_event __user *events,
 				int maxevents, int timeout,
 				const sigset_t __user *sigmask,
 				size_t sigsetsize);
+/* epoll_pwait2 (Linux 5.11): wrapper over epoll_pwait that accepts a
+ * struct timespec timeout (nanosecond precision). */
+asmlinkage long sys_epoll_pwait2(int epfd, struct epoll_event __user *events,
+				int maxevents,
+				const struct timespec __user *timeout,
+				const sigset_t __user *sigmask,
+				size_t sigsetsize);
 asmlinkage long sys_gethostname(char __user *name, int len);
 asmlinkage long sys_sethostname(char __user *name, int len);
 asmlinkage long sys_setdomainname(char __user *name, int len);
@@ -759,6 +766,18 @@ asmlinkage long sys_linkat(int olddfd, const char __user *oldname,
 			   int newdfd, const char __user *newname, int flags);
 asmlinkage long sys_renameat(int olddfd, const char __user * oldname,
 			     int newdfd, const char __user * newname);
+/* renameat2 (Linux 3.15): renameat with flags (RENAME_NOREPLACE etc);
+ * implementation already exists in fs/namei.c. */
+asmlinkage long sys_renameat2(int olddfd, const char __user *oldname,
+			      int newdfd, const char __user *newname,
+			      unsigned int flags);
+/* userfaultfd (Linux 4.3): minimal stub in fs/userfaultfd.c. Provides
+ * fd + UFFDIO_API only; other ioctls return -EINVAL. */
+asmlinkage long sys_userfaultfd(int flags);
+/* membarrier (Linux 4.3): stub in fs/userfaultfd.c. Returns 0 for QUERY
+ * (no commands) and for actual commands (no-op). Used by ART class_linker
+ * for visibly-initialized state propagation. */
+asmlinkage long sys_membarrier(int cmd, int flags);
 asmlinkage long sys_futimesat(int dfd, const char __user *filename,
 			      struct timeval __user *utimes);
 asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode);
@@ -839,6 +858,12 @@ asmlinkage long sys_clone(unsigned long, unsigned long, int __user *,
 asmlinkage long sys_execve(const char __user *filename,
 		const char __user *const __user *argv,
 		const char __user *const __user *envp);
+asmlinkage long sys_execveat(int dfd, const char __user *filename,
+			const char __user *const __user *argv,
+			const char __user *const __user *envp, int flags);
+asmlinkage long compat_sys_execveat(int dfd, const char __user *filename,
+			const compat_uptr_t __user *argv,
+			const compat_uptr_t __user *envp, int flags);
 
 asmlinkage long sys_perf_event_open(
 		struct perf_event_attr __user *attr_uptr,
@@ -876,5 +901,17 @@ asmlinkage long sys_seccomp(unsigned int op, unsigned int flags,
 
 asmlinkage long sys_getrandom(char __user *buf, size_t count,
 			      unsigned int flags);
+
+
+/* clone3 backport */
+struct clone_args;
+asmlinkage long sys_clone3(struct clone_args __user *uargs, size_t size);
+
+
+/* statx backport */
+struct statx;
+asmlinkage long sys_statx(int dfd, const char __user *filename,
+			  unsigned int flags, unsigned int mask,
+			  struct statx __user *buffer);
 
 #endif

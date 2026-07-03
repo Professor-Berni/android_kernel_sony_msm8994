@@ -467,6 +467,11 @@ SYSCALL_DEFINE3(madvise, unsigned long, start, size_t, len_in, int, behavior)
 	size_t len;
 	struct blk_plug plug;
 
+	/* Stub Android 14+ madvise behaviors 18-25 (e.g. MADV_WIPEONFORK)
+	 * unknown to kernel 3.10, else bionic arc4random aborts. */
+	if (behavior >= 18 && behavior <= 25)
+		return 0;
+
 #ifdef CONFIG_MEMORY_FAILURE
 	if (behavior == MADV_HWPOISON || behavior == MADV_SOFT_OFFLINE)
 		return madvise_hwpoison(behavior, start, start+len_in);

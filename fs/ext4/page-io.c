@@ -26,10 +26,14 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/ratelimit.h>
+#include <linux/backing-dev.h>
+
+#include <linux/fscrypt_supp.h>
 
 #include "ext4_jbd2.h"
 #include "xattr.h"
 #include "acl.h"
+#include "ext4_crypto.h"
 
 static struct kmem_cache *io_end_cachep;
 
@@ -94,6 +98,16 @@ static void ext4_finish_bio(struct bio *bio)
 
 		if (!page)
 			continue;
+
+		/* Page uses legacy ext4_crypto_ctx, not fscrypt_ctx: do its own
+		 * cleanup here or fscrypt_pullback_bio_page NULL-derefs on the ctx. */
+		if (!page->mapping && PagePrivate(page)) {
+			struct ext4_crypto_ctx *ctx =
+				(struct ext4_crypto_ctx *)page_private(page);
+			struct page *control_page = ctx->w.control_page;
+			ext4_restore_control_page(page);
+			page = control_page;
+		}
 
 		if (error) {
 			SetPageError(page);
@@ -391,6 +405,7 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
 
 static int io_submit_add_bh(struct ext4_io_submit *io,
 			    struct inode *inode,
+			    struct page *page,
 			    struct buffer_head *bh)
 {
 	ext4_io_end_t *io_end;
@@ -405,7 +420,8 @@ submit_and_retry:
 		if (ret)
 			return ret;
 	}
-	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
+	/* use a bounce page for encrypted inode writes */
+	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
 	if (ret != bh->b_size)
 		goto submit_and_retry;
 	io_end = io->io_end;
@@ -421,11 +437,13 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			int len,
 			struct writeback_control *wbc)
 {
+	struct page *data_page = NULL;
 	struct inode *inode = page->mapping->host;
 	unsigned block_start, blocksize;
 	struct buffer_head *bh, *head;
 	int ret = 0;
 	int nr_submitted = 0;
+	int nr_to_submit = 0;
 
 	blocksize = 1 << inode->i_blkbits;
 
@@ -475,21 +493,45 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			unmap_underlying_metadata(bh->b_bdev, bh->b_blocknr);
 		}
 		set_buffer_async_write(bh);
+		nr_to_submit++;
 	} while ((bh = bh->b_this_page) != head);
 
-	/* Now submit buffers to write */
 	bh = head = page_buffers(page);
+
+	/* allocate a bounce page for encrypted inode writes */
+	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
+	    nr_to_submit) {
+		gfp_t gfp_flags = GFP_NOFS;
+
+	retry_encrypt:
+		data_page = ext4_encrypt(inode, page, gfp_flags);
+		if (IS_ERR(data_page)) {
+			ret = PTR_ERR(data_page);
+			if (ret == -ENOMEM && wbc->sync_mode == WB_SYNC_ALL) {
+				if (io->io_bio) {
+					ext4_io_submit(io);
+					congestion_wait(BLK_RW_ASYNC, HZ/50);
+				}
+				gfp_flags |= __GFP_NOFAIL;
+				goto retry_encrypt;
+			}
+			data_page = NULL;
+			goto out;
+		}
+	}
+
+	/* Now submit buffers to write */
 	do {
 		if (!buffer_async_write(bh))
 			continue;
-		ret = io_submit_add_bh(io, inode, bh);
+		ret = io_submit_add_bh(io, inode,
+				       data_page ? data_page : page, bh);
 		if (ret) {
 			/*
 			 * We only get here on ENOMEM.  Not much else
 			 * we can do but mark the page as dirty, and
 			 * better luck next time.
 			 */
-			redirty_page_for_writepage(wbc, page);
 			break;
 		}
 		nr_submitted++;
@@ -498,6 +540,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 
 	/* Error stopped previous loop? Clean up buffers... */
 	if (ret) {
+	out:
+		if (data_page)
+			ext4_restore_control_page(data_page);
+		redirty_page_for_writepage(wbc, page);
 		do {
 			clear_buffer_async_write(bh);
 			bh = bh->b_this_page;

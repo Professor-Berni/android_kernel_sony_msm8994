@@ -2544,8 +2544,13 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SCOPE:
 		val->intval = mdwc->scope;
 		break;
+	/* Default to 5V when smbcharger hasn't set voltage_max, else
+	 * BatteryMonitor derives MaxPower=0 ("Max charging current: 0"). */
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = mdwc->voltage_max;
+		val->intval = mdwc->voltage_max ? mdwc->voltage_max : 5000000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+		val->intval = 5000000;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = mdwc->current_max;
@@ -2780,6 +2785,7 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_SCOPE,

@@ -1488,12 +1488,17 @@ static int sony_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	uint16_t id = sony_util_get_context(s_ctrl);
 
 	LOGD("%s: %d\n", __func__, __LINE__);
+	/* LOGE/LOGD/LOGI are compiled out in this build; use pr_warn to trace
+	 * sensor power-up steps. */
+	pr_warn("sony_sensor_power_up: ENTER id=%u\n", id);
 
 	rc = sony_util_gpio_init(s_ctrl);
 	if (rc < 0) {
 		LOGE("%s: gpio_init failed\n", __func__);
+		pr_warn("sony_sensor_power_up: gpio_init FAILED rc=%d\n", rc);
 		goto exit;
 	}
+	pr_warn("sony_sensor_power_up: gpio_init OK\n");
 
 	rc = sony_sensor_pinctrl_init(&data->power_info);
 	if (rc < 0) {
@@ -1514,25 +1519,32 @@ static int sony_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = sony_util_power_ctrl(s_ctrl, &camera_data[id], true);
 	if (rc < 0) {
 		LOGE("power_up fail\n");
+		pr_warn("sony_sensor_power_up: power_ctrl FAILED rc=%d\n", rc);
 		goto exit;
 	}
+	pr_warn("sony_sensor_power_up: power_ctrl OK\n");
 
 	rc = sony_util_cci_init(s_ctrl->sensor_i2c_client);
 	if (rc < 0) {
 		LOGE("%s cci_init failed\n", __func__);
+		pr_warn("sony_sensor_power_up: cci_init FAILED rc=%d\n", rc);
 		goto exit;
 	}
+	pr_warn("sony_sensor_power_up: cci_init OK\n");
 
 	if (data->power_info.i2c_conf &&
 		data->power_info.i2c_conf->use_i2c_mux)
 		sony_util_i2c_mux_enable(
 			data->power_info.i2c_conf);
 
-	if (s_ctrl->func_tbl->sensor_match_id)
+	if (s_ctrl->func_tbl->sensor_match_id) {
 		rc = s_ctrl->func_tbl->sensor_match_id(s_ctrl);
+		pr_warn("sony_sensor_power_up: sensor_match_id rc=%d\n", rc);
+	}
 	camera_data[id].thermal_ret_val = -EINVAL;
 
 exit:
+	pr_warn("sony_sensor_power_up: EXIT rc=%d\n", rc);
 	return rc;
 }
 

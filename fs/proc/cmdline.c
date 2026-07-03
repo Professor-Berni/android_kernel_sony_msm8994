@@ -5,7 +5,10 @@
 
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%s\n", saved_command_line);
+	/* Append overrides (last-wins for init) to defeat the bootloader's
+	 * androidboot.veritymode=enforcing forcing dm-verity on unsupported HW. */
+	seq_printf(m, "%s androidboot.veritymode=disabled androidboot.vbmeta.invalidate_on_error=no androidboot.dynamic_partitions=false androidboot.slot_suffix= androidboot.avb.in_recovery=no\n",
+	           saved_command_line);
 	return 0;
 }
 

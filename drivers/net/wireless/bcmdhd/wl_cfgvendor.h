@@ -303,6 +303,9 @@ typedef enum wl_vendor_event {
 } wl_vendor_event_t;
 
 enum andr_wifi_attr {
+	/* Must start with ANDR_WIFI_ATTRIBUTE_INVALID=0 to match the HAL enum;
+	 * else attrs are off-by-one and set_country rejects COUNTRY, breaking 5GHz SoftAP. */
+	ANDR_WIFI_ATTRIBUTE_INVALID,
 	ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
 	ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
 	ANDR_WIFI_ATTRIBUTE_RANDOM_MAC_OUI,

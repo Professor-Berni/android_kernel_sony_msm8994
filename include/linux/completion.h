@@ -76,6 +76,15 @@ static inline void init_completion(struct completion *x)
 	init_waitqueue_head(&x->wait);
 }
 
+/**
+ * reinit_completion - reinitialize a completion structure (backport for fscrypt
+ * crypto_wait_req). Linux 3.13+ has this; Sony 3.10 needs the backport.
+ */
+static inline void reinit_completion(struct completion *x)
+{
+	x->done = 0;
+}
+
 extern void wait_for_completion(struct completion *);
 extern void wait_for_completion_io(struct completion *);
 extern int wait_for_completion_interruptible(struct completion *x);

@@ -3634,6 +3634,24 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 		}
 #endif /* DHD_USE_IDLECOUNT */
 		rc = dhdpcie_pci_suspend_resume(bus, state);
+		if (rc) {
+			/*
+			 * Link resume failed (EP stuck in D3): touching TCM/MMIO would
+			 * abort/panic, so flag bus down and HANG to power-cycle WiFi.
+			 */
+			DHD_ERROR(("%s: link resume failed rc=%d, skip D0_INFORM\n",
+				__FUNCTION__, rc));
+#ifdef SUPPORT_LINKDOWN_RECOVERY
+#ifdef CONFIG_ARCH_MSM
+			bus->islinkdown = TRUE;
+#endif /* CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERY */
+			DHD_GENERAL_LOCK(bus->dhd, flags);
+			bus->dhd->busstate = DHD_BUS_DOWN;
+			DHD_GENERAL_UNLOCK(bus->dhd, flags);
+			dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
+			return rc;
+		}
 		if (bus->dhd->busstate == DHD_BUS_SUSPEND) {
 			DHD_OS_WAKE_LOCK_WAIVE(bus->dhd);
 			dhdpcie_send_mb_data(bus, H2D_HOST_D0_INFORM);
@@ -4207,6 +4225,18 @@ static void
 dhdpcie_send_mb_data(dhd_bus_t *bus, uint32 h2d_mb_data)
 {
 	uint32 cur_h2d_mb_data = 0;
+
+#ifdef SUPPORT_LINKDOWN_RECOVERY
+#ifdef CONFIG_ARCH_MSM
+	/* Defense in depth: readshared below is raw TCM MMIO and a dead PCIe
+	 * link turns it into a synchronous external abort. */
+	if (bus->islinkdown) {
+		DHD_ERROR(("%s: PCIe link is down, skip mb data 0x%08X\n",
+			__FUNCTION__, h2d_mb_data));
+		return;
+	}
+#endif /* CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERY */
 
 	DHD_INFO_HW4(("%s: H2D_MB_DATA: 0x%08X\n", __FUNCTION__, h2d_mb_data));
 	dhd_bus_cmn_readshared(bus, &cur_h2d_mb_data, HTOD_MB_DATA, 0);

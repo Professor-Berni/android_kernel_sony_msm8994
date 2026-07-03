@@ -346,10 +346,19 @@ static inline void smp_prepare_cpus(unsigned int maxcpus) { }
  */
 static void __init setup_command_line(char *command_line)
 {
-	saved_command_line = alloc_bootmem(strlen (boot_command_line)+1);
-	static_command_line = alloc_bootmem(strlen (command_line)+1);
-	strcpy (saved_command_line, boot_command_line);
-	strcpy (static_command_line, command_line);
+	/* Bootloader appends androidboot.veritymode=enforcing (forces dm-verity we lack);
+	 * append our overrides after so last-value-wins disables it.
+	 */
+	const char *override = " androidboot.veritymode=disabled androidboot.vbmeta.invalidate_on_error=no androidboot.veritymode.override=disabled";
+	size_t boot_len = strlen(boot_command_line);
+	size_t override_len = strlen(override);
+
+	saved_command_line = alloc_bootmem(boot_len + override_len + 1);
+	static_command_line = alloc_bootmem(strlen(command_line) + override_len + 1);
+	strcpy(saved_command_line, boot_command_line);
+	strcat(saved_command_line, override);
+	strcpy(static_command_line, command_line);
+	strcat(static_command_line, override);
 }
 
 /*
@@ -828,6 +837,10 @@ static int __ref kernel_init(void *unused)
 	numa_default_policy();
 
 	flush_delayed_fput();
+
+	/* Mount devtmpfs on /dev before launching init */
+	devtmpfs_mount("dev");
+
 
 	if (ramdisk_execute_command) {
 		if (!run_init_process(ramdisk_execute_command))

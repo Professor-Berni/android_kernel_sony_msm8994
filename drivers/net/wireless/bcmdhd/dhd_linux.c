@@ -4314,6 +4314,62 @@ dhd_open(struct net_device *net)
 		}
 
 		/* dhd_sync_with_dongle has been called in dhd_bus_start or wl_android_wifi_on */
+
+		/* Driver read wlan_macaddr0 at attach (~5s) but taimport writes it
+		 * later under FBE (~54s); re-read + apply the real MAC here. */
+#ifdef GET_CUSTOM_MAC_ENABLE
+		if (ifidx == 0) {
+			uint8 file_mac[ETHER_ADDR_LEN];
+			if (somc_get_mac_address(file_mac) == 0 &&
+			    !ETHER_ISNULLADDR(file_mac) &&
+			    memcmp(dhd->pub.mac.octet, file_mac,
+				   ETHER_ADDR_LEN) != 0) {
+				if (_dhd_set_mac_address(dhd, ifidx,
+				    file_mac) == 0) {
+					memcpy(dhd->pub.mac.octet,
+					       file_mac, ETHER_ADDR_LEN);
+					DHD_ERROR(("applied WLAN MAC "
+						MACDBG " from wlan_macaddr0\n",
+						MAC2STRDBG(file_mac)));
+				}
+			}
+		}
+#endif /* GET_CUSTOM_MAC_ENABLE */
+
+		/* AP fw reports default Broadcom MAC 00:90:4c:11:22:33 -> PSK mismatch;
+		 * cache first real MAC and force fw back to it so STA/AP stay consistent.
+		 */
+		{
+			static uint8 saved_sta_mac[ETHER_ADDR_LEN];
+			static bool saved_sta_mac_valid = false;
+			static const uint8 bcm_default_ap_mac[ETHER_ADDR_LEN] =
+				{0x00, 0x90, 0x4c, 0x11, 0x22, 0x33};
+
+			if (!saved_sta_mac_valid) {
+				if (!ETHER_ISNULLADDR(dhd->pub.mac.octet) &&
+				    memcmp(dhd->pub.mac.octet, bcm_default_ap_mac,
+					   ETHER_ADDR_LEN) != 0) {
+					memcpy(saved_sta_mac, dhd->pub.mac.octet,
+					       ETHER_ADDR_LEN);
+					saved_sta_mac_valid = true;
+					DHD_ERROR(("saved STA MAC "
+						MACDBG "\n",
+						MAC2STRDBG(saved_sta_mac)));
+				}
+			} else if (memcmp(dhd->pub.mac.octet, saved_sta_mac,
+					  ETHER_ADDR_LEN) != 0) {
+				DHD_ERROR(("dongle MAC " MACDBG
+					" != saved " MACDBG ", restoring\n",
+					MAC2STRDBG(dhd->pub.mac.octet),
+					MAC2STRDBG(saved_sta_mac)));
+				if (_dhd_set_mac_address(dhd, ifidx,
+				    saved_sta_mac) != 0) {
+					DHD_ERROR(("MAC restore failed,"
+						" continuing with dongle MAC\n"));
+				}
+			}
+		}
+
 		memcpy(net->dev_addr, dhd->pub.mac.octet, ETHER_ADDR_LEN);
 
 #ifdef TOE

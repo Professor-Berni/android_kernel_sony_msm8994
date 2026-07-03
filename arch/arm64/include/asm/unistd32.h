@@ -785,11 +785,28 @@ __SYSCALL(__NR_finit_module, sys_finit_module)
 __SYSCALL(__NR_sys_sched_setattr, sys_sched_setattr)
 #define __NR_sys_sched_getattr 381
 __SYSCALL(__NR_sys_sched_getattr, sys_sched_getattr)
-/* #define __NR_renameat2 382 */
-__SYSCALL(382, sys_ni_syscall)
+/* expose renameat2 to aarch32 too: installd, init persist props and libcutils
+ * all hit this on the 32-bit zygote path. */
+#define __NR_renameat2 382
+__SYSCALL(__NR_renameat2, sys_renameat2)
 #define __NR_seccomp 383
 __SYSCALL(__NR_seccomp, sys_seccomp)
 #define __NR_getrandom 384
 __SYSCALL(__NR_getrandom, sys_getrandom)
 #define __NR_memfd_create 385
 __SYSCALL(__NR_memfd_create, sys_memfd_create)
+/* bpf as ni_syscall (BPF isn't implemented on this kernel; netd userspace
+ * handles ENOSYS gracefully via NetdUpdatable.cpp patch). */
+#define __NR_bpf 386
+__SYSCALL(__NR_bpf, sys_ni_syscall)
+/* execveat stub: not used by ART zygote but registered for completeness */
+#define __NR_execveat 387
+__SYSCALL(__NR_execveat, sys_ni_syscall)
+/* userfaultfd minimal stub for the aarch32 zygote: same fd-based stub
+ * as aarch64's syscall 282. */
+#define __NR_userfaultfd 388
+__SYSCALL(__NR_userfaultfd, sys_userfaultfd)
+/* membarrier stub for the aarch32 zygote (Linux 4.3 syscall): used by ART
+ * class_linker for cross-thread memory ordering. */
+#define __NR_membarrier 389
+__SYSCALL(__NR_membarrier, sys_membarrier)

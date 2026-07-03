@@ -12,6 +12,7 @@
 #include <linux/prctl.h>
 #include <linux/highuid.h>
 #include <linux/fs.h>
+#include <linux/namei.h>
 #include <linux/kmod.h>
 #include <linux/perf_event.h>
 #include <linux/resource.h>
@@ -1399,6 +1400,12 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 		errno = -EFAULT;
 	if (!errno && override_architecture(name))
 		errno = -EFAULT;
+	/* Spoof kernel version for Android 16 minimum version check */
+	if (!errno) {
+		const char spoof[] = "6.2.0-android13-0";
+		if (copy_to_user(name->release, spoof, sizeof(spoof)))
+			errno = -EFAULT;
+	}
 	return errno;
 }
 
@@ -2255,6 +2262,11 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	struct task_struct *me = current;
 	struct task_struct *tsk;
 	unsigned char comm[sizeof(me->comm)];
+
+	/* Stub PR_SET_VMA only; do NOT stub PR_SET_TAGGED_ADDR_CTRL or bionic
+	 * enables tagged pointers that 3.10 access_ok() rejects with EFAULT. */
+	if (option == 0x53564D41)  /* PR_SET_VMA */
+		return 0;
 	long error;
 
 	error = security_task_prctl(option, arg2, arg3, arg4, arg5);
@@ -2661,3 +2673,151 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
 	return 0;
 }
 #endif /* CONFIG_COMPAT */
+
+#include <linux/fdtable.h>
+#define CLOSE_RANGE_UNSHARE	(1U << 1)
+#define CLOSE_RANGE_CLOEXEC	(1U << 2)
+
+/* close_range - backport for Android 16 bionic compatibility */
+SYSCALL_DEFINE3(close_range, unsigned int, fd, unsigned int, max_fd,
+                unsigned int, flags)
+{
+    struct files_struct *files = current->files;
+    unsigned int cur_fd;
+
+    if (flags & ~(CLOSE_RANGE_UNSHARE | CLOSE_RANGE_CLOEXEC))
+        return -EINVAL;
+    if (fd > max_fd)
+        return -EINVAL;
+
+    if (flags & CLOSE_RANGE_CLOEXEC) {
+        /* Set CLOEXEC on range - just return 0 for compatibility */
+        return 0;
+    }
+
+    for (cur_fd = fd; cur_fd <= max_fd; cur_fd++) {
+        struct file *file;
+        spin_lock(&files->file_lock);
+        file = fcheck_files(files, cur_fd);
+        if (file)
+            get_file(file);
+        spin_unlock(&files->file_lock);
+        if (file) {
+            filp_close(file, files);
+            fput(file);
+        }
+    }
+    return 0;
+}
+
+/* clone3 - backport for Android 16 bionic compatibility */
+struct clone_args {
+	__u64 flags;
+	__u64 pidfd;
+	__u64 child_tid;
+	__u64 parent_tid;
+	__u64 exit_signal;
+	__u64 stack;
+	__u64 stack_size;
+	__u64 tls;
+};
+
+SYSCALL_DEFINE2(clone3, struct clone_args __user *, uargs, size_t, size)
+{
+	struct clone_args kargs;
+
+	if (size < sizeof(struct clone_args))
+		return -EINVAL;
+	if (copy_from_user(&kargs, uargs, sizeof(struct clone_args)))
+		return -EFAULT;
+
+	/* Delegate to classic clone with compatible flags */
+	return do_fork(kargs.flags & ~0xFF,
+		       (unsigned long)kargs.stack + kargs.stack_size,
+		       0,
+		       (int __user *)(unsigned long)kargs.parent_tid,
+		       (int __user *)(unsigned long)kargs.child_tid);
+}
+
+/* statx - backport for Android 16 bionic compatibility */
+#include <linux/stat.h>
+
+struct statx_timestamp {
+	__s64 tv_sec;
+	__u32 tv_nsec;
+	__s32 __reserved;
+};
+
+struct statx {
+	__u32 stx_mask;
+	__u32 stx_blksize;
+	__u64 stx_attributes;
+	__u32 stx_nlink;
+	__u32 stx_uid;
+	__u32 stx_gid;
+	__u16 stx_mode;
+	__u16 __spare0[1];
+	__u64 stx_ino;
+	__u64 stx_size;
+	__u64 stx_blocks;
+	__u64 stx_attributes_mask;
+	struct statx_timestamp stx_atime;
+	struct statx_timestamp stx_btime;
+	struct statx_timestamp stx_ctime;
+	struct statx_timestamp stx_mtime;
+	__u32 stx_rdev_major;
+	__u32 stx_rdev_minor;
+	__u32 stx_dev_major;
+	__u32 stx_dev_minor;
+	__u64 __spare2[14];
+};
+
+#define STATX_BASIC_STATS 0x000007ffU
+
+SYSCALL_DEFINE5(statx, int, dfd, const char __user *, filename,
+		unsigned int, flags, unsigned int, mask,
+		struct statx __user *, buffer)
+{
+	struct kstat stat;
+	struct statx tmp = {};
+	int error;
+	unsigned int lookup_flags = 0;
+
+	if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+		      AT_EMPTY_PATH | 0xfffU))
+		return -EINVAL;
+
+	if (!(flags & AT_SYMLINK_NOFOLLOW))
+		lookup_flags |= LOOKUP_FOLLOW;
+	if (flags & AT_EMPTY_PATH)
+		lookup_flags |= LOOKUP_EMPTY;
+
+	error = vfs_fstatat(dfd, filename, &stat, lookup_flags);
+	if (error)
+		return error;
+
+	tmp.stx_mask = STATX_BASIC_STATS;
+	tmp.stx_blksize = stat.blksize;
+	tmp.stx_nlink = stat.nlink;
+	tmp.stx_uid = __kuid_val(stat.uid);
+	tmp.stx_gid = __kgid_val(stat.gid);
+	tmp.stx_mode = stat.mode;
+	tmp.stx_ino = stat.ino;
+	tmp.stx_size = stat.size;
+	tmp.stx_blocks = stat.blocks;
+	tmp.stx_atime.tv_sec = stat.atime.tv_sec;
+	tmp.stx_atime.tv_nsec = stat.atime.tv_nsec;
+	tmp.stx_mtime.tv_sec = stat.mtime.tv_sec;
+	tmp.stx_mtime.tv_nsec = stat.mtime.tv_nsec;
+	tmp.stx_ctime.tv_sec = stat.ctime.tv_sec;
+	tmp.stx_ctime.tv_nsec = stat.ctime.tv_nsec;
+	tmp.stx_rdev_major = MAJOR(stat.rdev);
+	tmp.stx_rdev_minor = MINOR(stat.rdev);
+	tmp.stx_dev_major = MAJOR(stat.dev);
+	tmp.stx_dev_minor = MINOR(stat.dev);
+
+	if (copy_to_user(buffer, &tmp, sizeof(tmp)))
+		return -EFAULT;
+	return 0;
+}
+
