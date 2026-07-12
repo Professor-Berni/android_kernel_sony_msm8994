@@ -1400,12 +1400,6 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 		errno = -EFAULT;
 	if (!errno && override_architecture(name))
 		errno = -EFAULT;
-	/* Spoof kernel version for Android 16 minimum version check */
-	if (!errno) {
-		const char spoof[] = "6.2.0-android13-0";
-		if (copy_to_user(name->release, spoof, sizeof(spoof)))
-			errno = -EFAULT;
-	}
 	return errno;
 }
 
