@@ -681,6 +681,12 @@ static void subsys_stop(struct subsys_device *subsys)
 {
 	const char *name = subsys->desc->name;
 
+	if (subsys->desc->no_shutdown_on_put) {
+		pr_info("[%s]: skipping shutdown on put\n", name);
+		subsys_set_state(subsys, SUBSYS_OFFLINE);
+		return;
+	}
+
 	subsys->desc->sysmon_shutdown_ret = sysmon_send_shutdown(subsys->desc);
 	if (subsys->desc->sysmon_shutdown_ret)
 		pr_debug("Graceful shutdown failed for %s\n", name);
@@ -1349,6 +1355,9 @@ static int subsys_parse_devicetree(struct subsys_desc *desc)
 			&desc->ramdump_disable_gpio);
 	if (ret && ret != -ENOENT)
 		return ret;
+
+	desc->no_shutdown_on_put = of_property_read_bool(desc->dev->of_node,
+						"qcom,no-shutdown-on-put");
 
 	ret = platform_get_irq(pdev, 0);
 	if (ret > 0)

@@ -87,6 +87,7 @@ struct subsys_desc {
 	u32 sysmon_pid;
 	int sysmon_shutdown_ret;
 	bool system_debug;
+	bool no_shutdown_on_put;
 };
 
 /**

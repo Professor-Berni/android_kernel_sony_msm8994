@@ -1849,6 +1849,7 @@
 		qcom,mba-image-is-not-elf;
 		qcom,sysmon-id = <0>;
 		qcom,ssctl-instance-id = <0x12>;
+		qcom,no-shutdown-on-put;
 		qcom,override-acc;
 		qcom,ahb-clk-vote;
 		qcom,pnoc-clk-vote;
