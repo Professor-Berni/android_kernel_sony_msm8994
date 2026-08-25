@@ -380,9 +380,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"EE", "E0", 979},
 	{"EG", "EG", 212},
 	{"ER", "ER", 0},
-	/* Map ES -> US rev 996: the E0 CLM allows 5GHz STA but refuses 5GHz AP,
-	 * so SoftAP beacon bring-up fails; US permits UNII-1/UNII-3 AP (and VHT80). */
-	{"ES", "US", 996},
+	{"ES", "E0", 979},
 	{"ET", "ET", 2},
 	{"FI", "E0", 979},
 	{"FJ", "XT", 54},
