@@ -285,7 +285,16 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		adapter->intr_flags = resource->flags;
 	}
 #ifdef CONFIG_SOMC_WIFI_CONTROL
-	somc_wifi_init(pdev);
+	/* Abort the probe if Sony's power-control init fails; continuing would
+	 * call set_power on a freed bcmdhd_data (UAF → NULL-deref panic). */
+	{
+		int somc_ret = somc_wifi_init(pdev);
+		if (somc_ret) {
+			DHD_ERROR(("%s: somc_wifi_init failed %d\n",
+				__FUNCTION__, somc_ret));
+			return somc_ret;
+		}
+	}
 #endif /* CONFIG_SOMC_WIFI_CONTROL */
 #ifdef CONFIG_DTS
 #ifndef CUSTOMER_HW5
