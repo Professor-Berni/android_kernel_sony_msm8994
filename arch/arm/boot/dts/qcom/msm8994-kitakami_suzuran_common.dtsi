@@ -1025,6 +1025,10 @@
 	somc,limit-usb-5v-level = <12>;
 };
 
+&secure_mem {
+	reg = <0 0 0 0x2000000>;
+};
+
 &qsecom_mem {
 	reg = <0 0 0 0x1900000>;
 };
