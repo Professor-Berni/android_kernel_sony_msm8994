@@ -2668,42 +2668,6 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
 }
 #endif /* CONFIG_COMPAT */
 
-#include <linux/fdtable.h>
-#define CLOSE_RANGE_UNSHARE	(1U << 1)
-#define CLOSE_RANGE_CLOEXEC	(1U << 2)
-
-/* close_range - backport for Android 16 bionic compatibility */
-SYSCALL_DEFINE3(close_range, unsigned int, fd, unsigned int, max_fd,
-                unsigned int, flags)
-{
-    struct files_struct *files = current->files;
-    unsigned int cur_fd;
-
-    if (flags & ~(CLOSE_RANGE_UNSHARE | CLOSE_RANGE_CLOEXEC))
-        return -EINVAL;
-    if (fd > max_fd)
-        return -EINVAL;
-
-    if (flags & CLOSE_RANGE_CLOEXEC) {
-        /* Set CLOEXEC on range - just return 0 for compatibility */
-        return 0;
-    }
-
-    for (cur_fd = fd; cur_fd <= max_fd; cur_fd++) {
-        struct file *file;
-        spin_lock(&files->file_lock);
-        file = fcheck_files(files, cur_fd);
-        if (file)
-            get_file(file);
-        spin_unlock(&files->file_lock);
-        if (file) {
-            filp_close(file, files);
-            fput(file);
-        }
-    }
-    return 0;
-}
-
 /* clone3 - backport for Android 16 bionic compatibility */
 struct clone_args {
 	__u64 flags;

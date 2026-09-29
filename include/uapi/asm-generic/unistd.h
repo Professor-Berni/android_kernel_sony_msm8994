@@ -1026,7 +1026,7 @@ __SYSCALL(__NR_pidfd_open, sys_ni_syscall)
 #define __NR_clone3 435
 __SYSCALL(__NR_clone3, sys_clone3)
 #define __NR_close_range 436
-__SYSCALL(__NR_close_range, sys_ni_syscall)
+__SYSCALL(__NR_close_range, sys_close_range)
 #define __NR_openat2 437
 __SYSCALL(__NR_openat2, sys_ni_syscall)
 #define __NR_pidfd_getfd 438

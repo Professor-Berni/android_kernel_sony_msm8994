@@ -22,6 +22,7 @@
 #include <linux/spinlock.h>
 #include <linux/rcupdate.h>
 #include <linux/workqueue.h>
+#include <linux/close_range.h>
 
 int sysctl_nr_open __read_mostly = 1024*1024;
 int sysctl_nr_open_min = BITS_PER_LONG;
@@ -669,6 +670,63 @@ int __close_fd(struct files_struct *files, unsigned fd)
 out_unlock:
 	spin_unlock(&files->file_lock);
 	return -EBADF;
+}
+
+/**
+ * __close_range() - Close all file descriptors in a given range.
+ *
+ * @fd:     starting file descriptor to close
+ * @max_fd: last file descriptor to close
+ * @flags:  CLOSE_RANGE_UNSHARE and/or CLOSE_RANGE_CLOEXEC
+ *
+ * This closes a range of file descriptors. All file descriptors
+ * from @fd up to and including @max_fd are closed.
+ */
+int __close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
+{
+	struct files_struct *files, *displaced = NULL;
+	struct fdtable *fdt;
+
+	if (flags & ~(CLOSE_RANGE_UNSHARE | CLOSE_RANGE_CLOEXEC))
+		return -EINVAL;
+
+	if (fd > max_fd)
+		return -EINVAL;
+
+	if (flags & CLOSE_RANGE_UNSHARE) {
+		int ret = unshare_files(&displaced);
+
+		if (ret)
+			return ret;
+	}
+
+	files = current->files;
+
+	if (flags & CLOSE_RANGE_CLOEXEC) {
+		spin_lock(&files->file_lock);
+		fdt = files_fdtable(files);
+		for (; fd <= max_fd && fd < fdt->max_fds; fd++)
+			__set_close_on_exec(fd, fdt);
+		spin_unlock(&files->file_lock);
+	} else {
+		for (; fd <= max_fd; fd++) {
+			unsigned int max_fds;
+
+			rcu_read_lock();
+			max_fds = files_fdtable(files)->max_fds;
+			rcu_read_unlock();
+			if (fd >= max_fds)
+				break;
+
+			__close_fd(files, fd);
+			cond_resched();
+		}
+	}
+
+	if (displaced)
+		put_files_struct(displaced);
+
+	return 0;
 }
 
 void do_close_on_exec(struct files_struct *files)

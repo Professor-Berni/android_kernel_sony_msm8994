@@ -45,8 +45,8 @@
 #define __ARM_NR_compat_set_tls		(__ARM_NR_COMPAT_BASE+5)
 
 /* extended for backports: renameat2 (382), bpf stub (386), execveat (387),
- * userfaultfd (388), membarrier (389). */
-#define __NR_compat_syscalls		390
+ * userfaultfd (388), membarrier (389), close_range (436). */
+#define __NR_compat_syscalls		437
 #endif
 
 #define __ARCH_WANT_SYS_CLONE
