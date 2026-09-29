@@ -773,13 +773,6 @@ asmlinkage long sys_renameat(int olddfd, const char __user * oldname,
 asmlinkage long sys_renameat2(int olddfd, const char __user *oldname,
 			      int newdfd, const char __user *newname,
 			      unsigned int flags);
-/* userfaultfd (Linux 4.3): minimal stub in fs/userfaultfd.c. Provides
- * fd + UFFDIO_API only; other ioctls return -EINVAL. */
-asmlinkage long sys_userfaultfd(int flags);
-/* membarrier (Linux 4.3): stub in fs/userfaultfd.c. Returns 0 for QUERY
- * (no commands) and for actual commands (no-op). Used by ART class_linker
- * for visibly-initialized state propagation. */
-asmlinkage long sys_membarrier(int cmd, int flags);
 asmlinkage long sys_futimesat(int dfd, const char __user *filename,
 			      struct timeval __user *utimes);
 asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode);
@@ -903,11 +896,6 @@ asmlinkage long sys_seccomp(unsigned int op, unsigned int flags,
 
 asmlinkage long sys_getrandom(char __user *buf, size_t count,
 			      unsigned int flags);
-
-
-/* clone3 backport */
-struct clone_args;
-asmlinkage long sys_clone3(struct clone_args __user *uargs, size_t size);
 
 
 /* statx backport */

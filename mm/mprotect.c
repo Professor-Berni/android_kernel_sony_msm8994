@@ -334,9 +334,6 @@ SYSCALL_DEFINE3(mprotect, unsigned long, start, size_t, len,
 	int error = -EINVAL;
 	const int grows = prot & (PROT_GROWSDOWN|PROT_GROWSUP);
 
-	/* Strip PROT_MTE (0x20) if Android 14+ requests it on kernel without MTE support */
-	prot &= ~0x20UL;
-
 	prot &= ~(PROT_GROWSDOWN|PROT_GROWSUP);
 	if (grows == (PROT_GROWSDOWN|PROT_GROWSUP)) /* can't be both */
 		return -EINVAL;

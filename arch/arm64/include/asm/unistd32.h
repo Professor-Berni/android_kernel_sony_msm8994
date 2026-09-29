@@ -802,14 +802,10 @@ __SYSCALL(__NR_bpf, sys_ni_syscall)
 /* execveat stub: not used by ART zygote but registered for completeness */
 #define __NR_execveat 387
 __SYSCALL(__NR_execveat, sys_ni_syscall)
-/* userfaultfd minimal stub for the aarch32 zygote: same fd-based stub
- * as aarch64's syscall 282. */
 #define __NR_userfaultfd 388
-__SYSCALL(__NR_userfaultfd, sys_userfaultfd)
-/* membarrier stub for the aarch32 zygote (Linux 4.3 syscall): used by ART
- * class_linker for cross-thread memory ordering. */
+__SYSCALL(__NR_userfaultfd, sys_ni_syscall)
 #define __NR_membarrier 389
-__SYSCALL(__NR_membarrier, sys_membarrier)
+__SYSCALL(__NR_membarrier, sys_ni_syscall)
 /* 390-435 are not implemented */
 __SYSCALL(390, sys_ni_syscall)
 __SYSCALL(391, sys_ni_syscall)

@@ -2668,35 +2668,6 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
 }
 #endif /* CONFIG_COMPAT */
 
-/* clone3 - backport for Android 16 bionic compatibility */
-struct clone_args {
-	__u64 flags;
-	__u64 pidfd;
-	__u64 child_tid;
-	__u64 parent_tid;
-	__u64 exit_signal;
-	__u64 stack;
-	__u64 stack_size;
-	__u64 tls;
-};
-
-SYSCALL_DEFINE2(clone3, struct clone_args __user *, uargs, size_t, size)
-{
-	struct clone_args kargs;
-
-	if (size < sizeof(struct clone_args))
-		return -EINVAL;
-	if (copy_from_user(&kargs, uargs, sizeof(struct clone_args)))
-		return -EFAULT;
-
-	/* Delegate to classic clone with compatible flags */
-	return do_fork(kargs.flags & ~0xFF,
-		       (unsigned long)kargs.stack + kargs.stack_size,
-		       0,
-		       (int __user *)(unsigned long)kargs.parent_tid,
-		       (int __user *)(unsigned long)kargs.child_tid);
-}
-
 /* statx - backport for Android 16 bionic compatibility */
 #include <linux/stat.h>
 

@@ -714,13 +714,9 @@ __SYSCALL(__NR_memfd_create, sys_memfd_create)
 __SC_COMP(__NR_execveat, sys_execveat, compat_sys_execveat)
 
 #define __NR_userfaultfd 282
-/* minimal userfaultfd stub (fs/userfaultfd.c): returns a valid fd;
- * UFFDIO_API works (features=0); other ioctls return -EINVAL. Sufficient
- * for ART feature detection on kernel 3.10. */
-__SYSCALL(__NR_userfaultfd, sys_userfaultfd)
+__SYSCALL(__NR_userfaultfd, sys_ni_syscall)
 #define __NR_membarrier 283
-/* minimal membarrier stub (fs/userfaultfd.c) */
-__SYSCALL(__NR_membarrier, sys_membarrier)
+__SYSCALL(__NR_membarrier, sys_ni_syscall)
 #define __NR_mlock2 284
 __SYSCALL(__NR_mlock2, sys_ni_syscall)
 #define __NR_copy_file_range 285
@@ -1024,7 +1020,7 @@ __SYSCALL(__NR_fspick, sys_ni_syscall)
 #define __NR_pidfd_open 434
 __SYSCALL(__NR_pidfd_open, sys_ni_syscall)
 #define __NR_clone3 435
-__SYSCALL(__NR_clone3, sys_clone3)
+__SYSCALL(__NR_clone3, sys_ni_syscall)
 #define __NR_close_range 436
 __SYSCALL(__NR_close_range, sys_close_range)
 #define __NR_openat2 437
