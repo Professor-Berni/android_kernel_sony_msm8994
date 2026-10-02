@@ -3175,3 +3175,7 @@
 &pcie1 {
 	qcom,clk-power-manage-en;
 };
+
+&secure_mem {
+	reg = <0 0 0 0x2000000>;
+};
