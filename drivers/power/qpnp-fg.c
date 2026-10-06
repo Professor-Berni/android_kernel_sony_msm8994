@@ -1304,9 +1304,11 @@ static int get_prop_capacity(struct fg_chip *chip)
 	if (chip->battery_missing)
 		return MISSING_CAPACITY;
 	if (!chip->profile_loaded && !chip->use_otp_profile) {
-		int raw = get_monotonic_soc_raw(chip);
-		if (raw > 0)
-			return DIV_ROUND_CLOSEST(raw * FULL_CAPACITY, FULL_SOC_RAW);
+#ifdef CONFIG_QPNP_FG_EXTENSION
+		msoc = get_monotonic_soc_raw(chip);
+		if (msoc > 0)
+			return somc_fg_ceil_capacity(&chip->somc_params, (u8)msoc);
+#endif
 		return DEFAULT_CAPACITY;
 	}
 	if (chip->charge_full)
