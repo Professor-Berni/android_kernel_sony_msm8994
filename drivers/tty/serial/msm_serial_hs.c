@@ -3564,6 +3564,10 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		MSM_HS_WARN("%s: Client clock vote imbalance\n", __func__);
 		atomic_set(&msm_uport->client_req_state, 0);
 	}
+	if (atomic_read(&msm_uport->client_count)) {
+		MSM_HS_WARN("%s: Client vote on, forcing to 0\n", __func__);
+		atomic_set(&msm_uport->client_count, 0);
+	}
 	/* Free the interrupt */
 	free_irq(uport->irq, msm_uport);
 	if (is_use_low_power_wakeup(msm_uport)) {
