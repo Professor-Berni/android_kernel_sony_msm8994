@@ -2209,7 +2209,7 @@ void msm_hs_resource_off(struct msm_hs_port *msm_uport)
 		msm_hs_write(uport, UART_DM_DMEN, data);
 		sps_tx_disconnect(msm_uport);
 	}
-	if (!atomic_read(&msm_uport->client_req_state))
+	if (msm_uport->obs || !atomic_read(&msm_uport->client_req_state))
 		msm_hs_enable_flow_control(uport, false);
 }
 
@@ -3062,7 +3062,7 @@ static void msm_hs_pm_suspend(struct device *dev)
 	msm_uport->pm_state = MSM_HS_PM_SUSPENDED;
 	msm_hs_resource_off(msm_uport);
 	msm_hs_clk_bus_unvote(msm_uport);
-	if (!atomic_read(&msm_uport->client_req_state))
+	if (msm_uport->obs || !atomic_read(&msm_uport->client_req_state))
 		toggle_wakeup_interrupt(msm_uport);
 	__pm_relax(&msm_uport->ws);
 	MSM_HS_DBG("%s(): return suspend\n", __func__);
@@ -3082,7 +3082,7 @@ static int msm_hs_pm_resume(struct device *dev)
 		goto err_resume;
 	if (msm_uport->pm_state == MSM_HS_PM_ACTIVE)
 		return 0;
-	if (!atomic_read(&msm_uport->client_req_state))
+	if (msm_uport->obs || !atomic_read(&msm_uport->client_req_state))
 		toggle_wakeup_interrupt(msm_uport);
 	msm_hs_clk_bus_vote(msm_uport);
 	__pm_stay_awake(&msm_uport->ws);
